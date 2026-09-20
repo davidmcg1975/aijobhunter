@@ -1,0 +1,614 @@
+// AI Contract Hunter - database schema
+// Rule: every user-owned record carries a userId and is always queried with it.
+// Job / JobAnalysis are shared reference data and deliberately have no userId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Accounts & auth
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  disabledAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // GDPR
+  acceptedTermsAt       DateTime?
+  aiProcessingConsentAt DateTime?
+
+  profile       Profile?
+  experiences   Experience[]
+  cvs           Cv[]
+  matches       JobMatch[]
+  savedJobs     SavedJob[]
+  applications  Application[]
+  coverLetters  CoverLetter[]
+  savedSearches SavedSearch[]
+  tokens        AuthToken[]
+  auditLogs     AuditLog[]
+  aiUsage       AiUsage[]
+  notifications Notification[]
+  sessions      Session[]
+
+  @@index([email])
+}
+
+enum AuthTokenKind {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+/// Single-use tokens. Only a SHA-256 hash of the token value is stored.
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  kind      AuthTokenKind
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// Professional profile - the source of truth the AI is grounded in
+// ---------------------------------------------------------------------------
+
+enum RemoteMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum Ir35Stance {
+  INSIDE
+  OUTSIDE
+}
+
+enum EngagementModel {
+  UMBRELLA
+  LIMITED_COMPANY
+  PAYE
+}
+
+model Profile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Personal
+  headline    String?
+  location    String?
+  postcode    String?
+  phone       String?
+  linkedinUrl String?
+
+  // Contract preferences
+  minDayRate        Int?
+  preferredDayRate  Int?
+  maxCommuteMiles   Int?
+  remoteModes       RemoteMode[]      @default([])
+  ir35Stances       Ir35Stance[]      @default([])
+  engagementModels  EngagementModel[] @default([])
+  minContractMonths Int?
+  maxContractMonths Int?
+
+  // Professional
+  jobTitles            String[] @default([])
+  yearsExperience      Int?
+  industries           String[] @default([])
+  technologies         String[] @default([])
+  testingMethodologies String[] @default([])
+  aiTestingSkills      String[] @default([])
+  managementExperience String?
+  certifications       String[] @default([])
+  qualifications       String[] @default([])
+  softSkills           String[] @default([])
+
+  /// Where each profile fact came from: "user" (typed) or "cv:<cvId>" (AI extracted, user confirmed).
+  provenance Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Experience {
+  id     String @id @default(cuid())
+  userId String
+
+  company          String
+  jobTitle         String
+  /// Nullable on purpose. CVs routinely list early-career roles without dates,
+  /// and dropping those roles loses real career history. "Date unknown" is a
+  /// truthful state; a guessed date is not.
+  startDate        DateTime?
+  endDate          DateTime?
+  isCurrent        Boolean   @default(false)
+  location         String?
+  industry         String?
+  description      String?   @db.Text
+  responsibilities String[]  @default([])
+  achievements     String[]  @default([])
+  technologies     String[]  @default([])
+
+  /// "user" or "cv:<cvId>" - records who asserted this, never silently AI-invented.
+  source    String   @default("user")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startDate])
+}
+
+// ---------------------------------------------------------------------------
+// CVs
+// ---------------------------------------------------------------------------
+
+enum CvKind {
+  MASTER
+  TAILORED
+}
+
+model Cv {
+  id     String @id @default(cuid())
+  userId String
+
+  name     String
+  kind     CvKind  @default(TAILORED)
+  isMaster Boolean @default(false)
+
+  /// Original uploaded file (object storage key); null for AI-generated CVs.
+  fileKey      String?
+  fileName     String?
+  fileMimeType String?
+  fileSize     Int?
+
+  /// Extracted or generated plain text.
+  extractedText String? @db.Text
+
+  /// AI structured view of this CV. Never overwrites Profile without user action.
+  structured Json?
+
+  // Tailoring provenance
+  sourceCvId    String?
+  jobId         String?
+  /// Human-readable list of what the tailoring changed.
+  changeSummary Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceCv Cv?  @relation("CvLineage", fields: [sourceCvId], references: [id], onDelete: SetNull)
+  derived  Cv[] @relation("CvLineage")
+  job      Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  applications Application[]
+
+  @@index([userId, createdAt])
+  @@index([userId, isMaster])
+}
+
+// ---------------------------------------------------------------------------
+// Jobs - shared reference data, normalised from any JobSource
+// ---------------------------------------------------------------------------
+
+enum SalaryPeriod {
+  DAY
+  HOUR
+  MONTH
+  YEAR
+  UNKNOWN
+}
+
+enum ContractType {
+  CONTRACT
+  PERMANENT
+  UNKNOWN
+}
+
+enum RemoteType {
+  REMOTE
+  HYBRID
+  ONSITE
+  UNKNOWN
+}
+
+enum Ir35Status {
+  INSIDE
+  OUTSIDE
+  UNKNOWN
+}
+
+model Job {
+  id String @id @default(cuid())
+
+  source      String
+  sourceJobId String
+
+  title       String
+  company     String?
+  description String  @db.Text
+  /// Providers often return only an extract. The AI and the UI must both know.
+  descriptionTruncated Boolean @default(false)
+
+  /// The full advert text, pasted in by a user from the original posting.
+  /// Job boards return a 500-character extract, which caps how good any
+  /// analysis or match score can be; this is the way past that ceiling.
+  /// Shared like the rest of Job - it is the same public advert, so one
+  /// person supplying it improves the analysis for everyone.
+  fullDescription        String?   @db.Text
+  fullDescriptionAddedAt DateTime?
+  /// Who supplied it. Recorded for auditability, never displayed.
+  fullDescriptionAddedBy String?
+  location    String?
+  latitude    Float?
+  longitude   Float?
+
+  salaryMin         Int?
+  salaryMax         Int?
+  salaryPeriod      SalaryPeriod @default(UNKNOWN)
+  salaryIsPredicted Boolean      @default(false)
+
+  contractType ContractType @default(UNKNOWN)
+  contractTime String?
+  remote       RemoteType   @default(UNKNOWN)
+  ir35         Ir35Status   @default(UNKNOWN)
+
+  url         String
+  postedAt    DateTime?
+  retrievedAt DateTime  @default(now())
+  expiredAt   DateTime?
+
+  /// Normalised hash of title + company + location, used for cross-source dedup.
+  fingerprint String
+
+  /// When this job duplicates another, points at the record we actually display.
+  canonicalId String?
+  canonical   Job?   @relation("JobDuplicates", fields: [canonicalId], references: [id], onDelete: SetNull)
+  duplicates  Job[]  @relation("JobDuplicates")
+
+  analysis     JobAnalysis?
+  matches      JobMatch[]
+  savedBy      SavedJob[]
+  applications Application[]
+  coverLetters CoverLetter[]
+  tailoredCvs  Cv[]
+
+  @@unique([source, sourceJobId])
+  @@index([fingerprint])
+  @@index([postedAt])
+  @@index([canonicalId])
+}
+
+/// AI extraction of a job advert. One per job, shared by all users (holds no user data).
+model JobAnalysis {
+  id    String @id @default(cuid())
+  jobId String @unique
+
+  summary              String   @db.Text
+  requiredSkills       String[] @default([])
+  desirableSkills      String[] @default([])
+  responsibilities     String[] @default([])
+  technologies         String[] @default([])
+  testingMethodologies String[] @default([])
+  aiTestingSkills      String[] @default([])
+  industry             String?
+  seniority            String?
+  certifications       String[] @default([])
+
+  // Contract facts the AI read out of the advert text
+  inferredIr35         Ir35Status @default(UNKNOWN)
+  inferredRemote       RemoteType @default(UNKNOWN)
+  inferredRateMin      Int?
+  inferredRateMax      Int?
+  inferredLengthMonths Int?
+
+  model         String
+  promptVersion String
+  createdAt     DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Matching
+// ---------------------------------------------------------------------------
+
+enum Recommendation {
+  STRONG_MATCH
+  GOOD_MATCH
+  POSSIBLE_MATCH
+  WEAK_MATCH
+}
+
+model JobMatch {
+  id     String @id @default(cuid())
+  userId String
+  jobId  String
+
+  score          Int
+  recommendation Recommendation
+
+  /// Per-dimension scores, weights and the evidence behind each.
+  /// Shape defined by MatchBreakdown in src/lib/matching/types.ts.
+  breakdown Json
+
+  /// Hash of the profile/CV state this was scored against, so we know when it is stale.
+  profileVersion String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, score])
+  @@index([userId, createdAt])
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Applications
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  SAVED
+  CONSIDERING
+  APPLIED
+  RECRUITER_CONTACTED
+  INTERVIEW
+  OFFER
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+model Application {
+  id     String @id @default(cuid())
+  userId String
+  jobId  String
+
+  status         ApplicationStatus @default(SAVED)
+  appliedAt      DateTime?
+  recruiterName  String?
+  recruiterEmail String?
+  recruiterPhone String?
+  agency         String?
+  agreedRate     Int?
+  ir35           Ir35Status        @default(UNKNOWN)
+  cvId           String?
+  coverLetterId  String?
+  notes          String?           @db.Text
+  nextFollowUpAt DateTime?
+  closingAt      DateTime?
+  sortOrder      Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job        Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cv         Cv?                @relation(fields: [cvId], references: [id], onDelete: SetNull)
+  events     ApplicationEvent[]
+  interviews Interview[]
+
+  @@unique([userId, jobId])
+  @@index([userId, status])
+  @@index([userId, nextFollowUpAt])
+}
+
+model ApplicationEvent {
+  id            String   @id @default(cuid())
+  applicationId String
+  userId        String
+  kind          String
+  detail        String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+}
+
+model Interview {
+  id            String   @id @default(cuid())
+  applicationId String
+  userId        String
+  scheduledAt   DateTime
+  stage         String?
+  format        String?
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledAt])
+}
+
+model CoverLetter {
+  id     String @id @default(cuid())
+  userId String
+  jobId  String
+
+  tone    String
+  content String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Searches, alerts, notifications
+// ---------------------------------------------------------------------------
+
+model SavedSearch {
+  id     String @id @default(cuid())
+  userId String
+
+  name           String
+  criteria       Json
+  alertFrequency String?
+  lastRunAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+
+  kind      String
+  title     String
+  body      String?   @db.Text
+  linkUrl   String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+// ---------------------------------------------------------------------------
+// Operations: audit, usage, rate limiting
+// ---------------------------------------------------------------------------
+
+/// Append-only. Never contains CV text, passwords, tokens or API keys.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  actorId   String?
+  action    String
+  entity    String?
+  entityId  String?
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+model AiUsage {
+  id     String  @id @default(cuid())
+  userId String?
+
+  operation    String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  costPence    Int      @default(0)
+  succeeded    Boolean  @default(true)
+  errorCode    String?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model SourceFetchLog {
+  id          String   @id @default(cuid())
+  source      String
+  query       String?
+  requested   Int      @default(0)
+  received    Int      @default(0)
+  created     Int      @default(0)
+  duplicates  Int      @default(0)
+  succeeded   Boolean  @default(true)
+  errorCode   String?
+  errorDetail String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([source, createdAt])
+}
+
+model RateLimit {
+  id          String   @id @default(cuid())
+  bucket      String
+  key         String
+  count       Int      @default(0)
+  windowStart DateTime
+  expiresAt   DateTime
+
+  @@unique([bucket, key, windowStart])
+  @@index([expiresAt])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+/// Opaque server-side sessions. The cookie holds a random 256-bit token;
+/// only its SHA-256 hash is stored, so a database leak cannot be replayed.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}

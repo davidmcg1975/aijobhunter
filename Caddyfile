@@ -1,0 +1,18 @@
+# Replace jobs.auraplayvr.com with the hostname you point at this server.
+# Caddy will request a certificate for it on first start, so the DNS record
+# must already resolve here or the request fails.
+jobs.auraplayvr.com {
+	encode gzip
+
+	# X-Forwarded-For is set by Caddy and read by the application for rate
+	# limiting and audit logging. Without a proxy setting it, every request
+	# would appear to come from the same address.
+	reverse_proxy app:3000
+
+	# The application sets its own security headers (see next.config.ts);
+	# these cover what a proxy is better placed to assert.
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		-Server
+	}
+}

@@ -1,0 +1,43 @@
+# Two containers: the application, and Caddy in front of it for TLS.
+#
+# Caddy obtains and renews a Let's Encrypt certificate automatically from the
+# domain in the Caddyfile - there is no certbot step and nothing to remember to
+# renew, which is the part of running your own server that most often breaks.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    volumes:
+      # Uploaded CVs must outlive the container.
+      - ./storage:/app/storage
+    expose:
+      - "3000"
+    # Not published to the host: only Caddy can reach it, so the app is never
+    # exposed over plain HTTP on a public port.
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  web:

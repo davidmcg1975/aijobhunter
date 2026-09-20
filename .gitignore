@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+build/
+coverage/
+next-env.d.ts
+
+# Secrets. .env holds the database password and four API keys.
+.env
+.env.*
+!.env.example
+
+# Uploaded CVs and generated documents - personal data, never in git.
+storage/
+
+# Embedded database
+.pglite/
+.owner.lock
+prisma/*.db
+
+# Local noise
+*.log
+.DS_Store
+.vercel
