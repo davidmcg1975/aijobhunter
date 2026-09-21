@@ -62,9 +62,27 @@ export function ChangePassword() {
   );
 }
 
-export function EmailVerification({ verified }: { verified: boolean }) {
+export function EmailVerification({
+  verified,
+  emailEnabled,
+}: {
+  verified: boolean;
+  emailEnabled: boolean;
+}) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+
+  if (!emailEnabled && !verified) {
+    return (
+      <section className="card" style={{ padding: "1.2rem", marginBottom: "1.2rem" }}>
+        <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.05rem" }}>Email address</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          This installation does not send email, so there is nothing to
+          confirm. Your account works fully without it.
+        </p>
+      </section>
+    );
+  }
 
   if (verified) {
     return (

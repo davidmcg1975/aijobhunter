@@ -192,3 +192,15 @@ under Settings → API keys. For Careerjet, check your current IP is registered 
 
 **AI features stop with a budget message** — raise
 `AI_MONTHLY_BUDGET_PENCE` in `.env` (it is in pence: `50000` is £500).
+
+**Forgotten your password** — this setup does not send email, so the reset
+link is written to the app's log instead. Request a reset on the sign-in page,
+then find the link with:
+
+```bash
+docker compose -f docker-compose.local.yml logs app
+```
+
+Look for `EMAIL NOT SENT`, copy the link below it into your browser, and
+choose a new password. (Email confirmation is not needed for anything else -
+the app works fully without email.)

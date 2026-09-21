@@ -42,7 +42,13 @@ function Messages({ state }: { state: FormState }) {
   );
 }
 
-export function LoginForm({ justReset }: { justReset: boolean }) {
+export function LoginForm({
+  justReset,
+  justRegistered = false,
+}: {
+  justReset: boolean;
+  justRegistered?: boolean;
+}) {
   const [state, action] = useActionState(loginAction, {} as FormState);
 
   return (
@@ -51,6 +57,12 @@ export function LoginForm({ justReset }: { justReset: boolean }) {
       {justReset && (
         <div className="alert alert-success" style={{ marginBottom: "0.9rem" }}>
           Your password has been changed. Sign in with your new password.
+        </div>
+      )}
+      {justRegistered && (
+        <div className="alert alert-success" style={{ marginBottom: "0.9rem" }}>
+          If that address was not already registered, your account is ready.
+          Sign in below.
         </div>
       )}
       <Messages state={state} />
@@ -169,7 +181,7 @@ export function RegisterForm({ inviteOnly = false }: { inviteOnly?: boolean }) {
   );
 }
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ emailEnabled = true }: { emailEnabled?: boolean }) {
   const [state, action] = useActionState(
     requestPasswordResetAction,
     {} as FormState,
@@ -178,6 +190,12 @@ export function ForgotPasswordForm() {
   return (
     <div className="card" style={{ padding: "1.5rem" }}>
       <h2 style={{ margin: "0 0 1rem", fontSize: "1.1rem" }}>Reset your password</h2>
+      {!emailEnabled && (
+        <div className="alert alert-info" style={{ marginBottom: "0.9rem" }}>
+          This installation cannot send email. The reset link is written to the
+          server log instead, where whoever runs the app can find it.
+        </div>
+      )}
       <Messages state={state} />
       {!state.success && (
         <form action={action}>

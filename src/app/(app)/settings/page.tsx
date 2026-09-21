@@ -57,7 +57,10 @@ export default async function SettingsPage() {
     <Container width={720}>
       <PageHeader title="Settings" description={user.email} />
 
-      <EmailVerification verified={Boolean(user.emailVerified)} />
+      <EmailVerification
+        verified={Boolean(user.emailVerified)}
+        emailEnabled={features.email()}
+      />
       <RescoreJobs />
       <ChangePassword />
       <AiProviderChoice

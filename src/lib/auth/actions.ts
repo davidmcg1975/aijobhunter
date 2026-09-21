@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
+import { env, features } from "@/lib/env";
 import { audit } from "@/lib/security/audit";
 import {
   RateLimitedError,
@@ -93,7 +93,7 @@ Someone tried to create an AI Contract Hunter account with this email address, b
 If it was you, sign in instead - or reset your password if you have forgotten it.
 `,
     });
-    redirect("/register/check-email");
+    redirect(afterRegistration());
   }
 
   const isFirstUser = (await prisma.user.count()) === 0;
@@ -118,7 +118,17 @@ If it was you, sign in instead - or reset your password if you have forgotten it
 
   await audit({ action: "user.register", userId: user.id });
 
-  redirect("/register/check-email");
+  redirect(afterRegistration());
+}
+
+/**
+ * Where registration lands. Without email configured there is no message to
+ * check, so the user goes straight to sign in. Both outcomes - new account or
+ * existing one - land on the same page, so it still does not reveal whether an
+ * address was already registered.
+ */
+function afterRegistration(): string {
+  return features.email() ? "/register/check-email" : "/login?registered=1";
 }
 
 const loginSchema = z.object({
