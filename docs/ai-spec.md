@@ -188,3 +188,33 @@ than nuance. See `docs/architecture.md`.
 drafted and shown. The user sends them.
 
 **It does not modify the profile.** It proposes; the user confirms.
+
+## Tailoring that keeps the user's formatting
+
+When the master CV was uploaded as Word (.docx), tailoring edits **a copy of
+that document in place** (`src/lib/cv/docx-edit.ts`) instead of producing new
+plain text. The model sees numbered paragraphs and returns
+`{ rewrites: [{ paragraph, text }], remove: [paragraph] }`; it never sees or
+writes XML. New text goes into the paragraph's existing runs, so paragraph
+formatting, run formatting, bullets, headers, footers and styles are all
+kept. A differently formatted lead-in ("**Automation:** …") keeps its own run.
+
+Which paragraphs may change is decided in code, not by the prompt. Locked:
+anything with a date; short lines naming an employer, job title or
+qualification; capitalised headings; anything a text swap could damage
+(tabs - which is how "Title ⇥ 2019–2023" lines are laid out - links, fields,
+text boxes, images, tracked changes). Edits to locked paragraphs are refused
+and recorded in `changeSummary.edits.refused`. At most half the editable
+paragraphs can be removed, and never the last paragraph of a table cell. The
+whole resulting document then goes through `verifyGrounding()` exactly as
+plain-text tailoring does.
+
+A PDF upload cannot be edited without losing its layout, so it still gets
+plain-text tailoring, and the UI says so and suggests uploading Word.
+
+First real run (21 September 2026), on a 71-paragraph CV: 8 paragraphs
+reworded; paragraph and run formatting identical on all 71; headers,
+footers, styles and numbering byte-identical. `verifyGrounding()` flagged
+"System Integration Testing" - the model had upgraded the CV's "integration
+testing" into a more specific phase the person never claimed. The prompt
+rules did not stop it; the check did, which is why the check exists.

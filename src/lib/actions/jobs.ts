@@ -108,7 +108,7 @@ export async function analyseJobAction(jobId: string): Promise<ActionResult> {
   const user = await requireUser();
 
   if (!(await aiAvailableFor(user.id))) {
-    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
+    return { error: "AI features are not set up. Choose an AI provider and add its API key under Settings." };
   }
 
   try {

@@ -82,6 +82,12 @@ export function TailorPanel({ jobId }: { jobId: string }) {
         <div style={{ marginTop: "1.2rem" }}>
           <GroundingNotice report={state.result.grounding} />
 
+          <div className="alert alert-info" style={{ marginBottom: "0.9rem" }}>
+            {state.result.keepsFormatting
+              ? "This is your own Word document with some paragraphs reworded - your fonts, bullets and layout are unchanged. The preview below is text only; download the Word file to see it as it really looks."
+              : "This version is plain text. To keep your CV's own formatting, upload it as a Word document (.docx) - a PDF cannot be edited without losing its layout."}
+          </div>
+
           {state.result.grounding.omissions.length > 0 && (
             <div className="alert alert-info" style={{ marginBottom: "0.9rem" }}>
               These employers from your history do not appear in the tailored
@@ -105,18 +111,39 @@ export function TailorPanel({ jobId }: { jobId: string }) {
                     : "Compare"}
               </button>
             ))}
-            <a
-              href={`/api/cv/${state.result.cvId}/export?format=pdf`}
-              className="btn btn-sm"
-            >
-              Download PDF
-            </a>
-            <a
-              href={`/api/cv/${state.result.cvId}/export?format=docx`}
-              className="btn btn-sm"
-            >
-              Download DOCX
-            </a>
+            {state.result.keepsFormatting ? (
+              <>
+                <a
+                  href={`/api/cv/${state.result.cvId}/export?format=docx`}
+                  className="btn btn-sm btn-primary"
+                  title="Your own Word document, with your formatting kept"
+                >
+                  Download Word (your formatting)
+                </a>
+                <a
+                  href={`/api/cv/${state.result.cvId}/export?format=pdf`}
+                  className="btn btn-sm"
+                  title="A plain-layout PDF. For your own formatting as a PDF, open the Word file and save it as PDF."
+                >
+                  PDF (plain layout)
+                </a>
+              </>
+            ) : (
+              <>
+                <a
+                  href={`/api/cv/${state.result.cvId}/export?format=pdf`}
+                  className="btn btn-sm"
+                >
+                  Download PDF
+                </a>
+                <a
+                  href={`/api/cv/${state.result.cvId}/export?format=docx`}
+                  className="btn btn-sm"
+                >
+                  Download DOCX
+                </a>
+              </>
+            )}
           </div>
 
           {view === "tailored" && (

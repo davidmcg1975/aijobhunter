@@ -218,6 +218,85 @@ encouraging.
 `.trim();
 }
 
+export const CV_DOCUMENT_TAILORING_SYSTEM = `
+You tailor a UK IT contractor's CV to a specific vacancy by editing their own
+Word document, paragraph by paragraph. Their formatting is kept exactly; only
+the wording of some paragraphs changes.
+
+${GROUNDING_RULES}
+
+Your job is emphasis and clarity, never invention. A recruiter must be able to
+put the tailored CV next to the original and see the same career, told better.
+
+Return ONLY a JSON object, with no commentary.
+`.trim();
+
+/**
+ * The document is shown as numbered paragraphs. Locked ones are shown for
+ * context only; the code refuses any edit to them whatever is returned here.
+ */
+export function cvDocumentTailoringPrompt(params: {
+  paragraphs: Array<{ index: number; text: string; locked: boolean }>;
+  profileSummary: string;
+  job: { title: string; company: string | null; description: string };
+}): string {
+  const document = params.paragraphs
+    .map((p) => `[${p.index}]${p.locked ? " (fixed)" : ""} ${p.text}`)
+    .join("\n")
+    .slice(0, 50_000);
+
+  return `
+Tailor this CV for the vacancy below by editing some of its paragraphs.
+
+=== VERIFIED PROFILE (source of truth) ===
+${params.profileSummary}
+
+=== THE CV, AS NUMBERED PARAGRAPHS (source of truth) ===
+Paragraphs marked (fixed) cannot be changed: job titles, employers, dates,
+headings and layout lines. You may rewrite or remove any other paragraph.
+"""
+${document}
+"""
+
+=== TARGET VACANCY ===
+TITLE: ${params.job.title}
+COMPANY: ${params.job.company ?? "not stated"}
+"""
+${params.job.description.slice(0, 15_000)}
+"""
+
+How to edit:
+- Rewrite a paragraph to bring forward what is relevant to this vacancy, using
+  the vacancy's terminology only where it truthfully describes this person's
+  experience. The profile/summary paragraph usually matters most.
+- Keep each rewrite roughly the same length as the original, so the layout
+  still fits. Plain sentences only: no line breaks, no bullet characters, no
+  markdown - the paragraph keeps its own bullet and formatting.
+- If a paragraph starts with a label (for example "Automation:"), keep that
+  label at the start of your rewrite.
+- Remove a paragraph only if it is clearly irrelevant to this vacancy and
+  removing it loses nothing the person would want an employer to see. Never
+  remove more than a few.
+- Leave everything else alone. Returning few, well-chosen edits is better than
+  rewriting everything.
+
+Return JSON with exactly this shape:
+{
+  "rewrites": [ { "paragraph": 12, "text": "the new wording of paragraph 12" } ],
+  "remove": [ 27 ],
+  "changes": [
+    { "change": "what you changed, in one short sentence", "reason": "why it helps for this vacancy" }
+  ],
+  "omittedRequirements": [
+    "requirements in the advert that this person's CV does not evidence"
+  ]
+}
+
+The "omittedRequirements" list is important: it tells the user honestly where
+the gaps are. Do not leave it empty just to be encouraging.
+`.trim();
+}
+
 export const COVER_LETTER_SYSTEM = `
 You write short covering letters for UK IT contractors.
 

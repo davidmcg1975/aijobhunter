@@ -71,6 +71,15 @@ rather than reading the environment. Design and trade-offs in
 `docs/security.md`. Unit tested (encryption, validation, every provider's
 key shape); schema applied to Neon.
 
+### Tailoring keeps the CV's own formatting (21 September 2026)
+
+A Word CV is now tailored by editing a copy of the user's own document in
+place: same fonts, bullets, spacing, header and footer, with some paragraphs
+reworded. Dates, titles, employers, headings and layout lines are locked in
+code. Verified on a real CV end to end - see `docs/ai-spec.md`. PDF uploads
+still get plain-text tailoring. The PDF download of a tailored Word CV is the
+plain layout; for the user's own formatting as PDF, save the Word file as PDF.
+
 ### ChatGPT as an alternative AI (21 September 2026)
 
 Each user chooses Claude (Anthropic) or ChatGPT (OpenAI) under Settings → AI

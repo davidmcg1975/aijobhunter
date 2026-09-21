@@ -30,7 +30,7 @@ export async function tailorCvAction(
   if (!jobId) return { error: "No job specified." };
 
   if (!(await aiAvailableFor(user.id))) {
-    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
+    return { error: "AI features are not set up. Choose an AI provider and add its API key under Settings." };
   }
 
   try {
@@ -73,7 +73,7 @@ export async function generateCoverLetterAction(
   if (!jobId) return { error: "No job specified." };
   if (!COVER_LETTER_TONES.includes(tone)) return { error: "Unknown tone." };
   if (!(await aiAvailableFor(user.id))) {
-    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
+    return { error: "AI features are not set up. Choose an AI provider and add its API key under Settings." };
   }
 
   try {
@@ -107,7 +107,7 @@ export async function draftRecruiterMessageAction(
   if (!jobId) return { error: "No job specified." };
   if (!RECRUITER_CHANNELS.includes(channel)) return { error: "Unknown channel." };
   if (!(await aiAvailableFor(user.id))) {
-    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
+    return { error: "AI features are not set up. Choose an AI provider and add its API key under Settings." };
   }
 
   try {

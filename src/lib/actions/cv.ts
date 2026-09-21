@@ -103,7 +103,7 @@ export async function uploadCvAction(
     return {
       cvId: cv.id,
       success:
-        "CV uploaded and text extracted. AI structuring is not set up - add an Anthropic API key under Settings → API keys, or fill in your profile by hand.",
+        "CV uploaded and text extracted. AI structuring is not set up - choose an AI provider and add its API key under Settings, or fill in your profile by hand.",
     };
   }
 

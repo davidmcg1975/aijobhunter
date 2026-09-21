@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { exportFilename, renderCvDocx, renderCvPdf } from "@/lib/cv/export";
 import { audit } from "@/lib/security/audit";
+import { getFile } from "@/lib/storage";
+import { DOCX_MIME_TYPE } from "@/lib/cv/docx-edit";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,12 @@ export async function GET(
   });
 
   if (format === "docx") {
-    const buffer = await renderCvDocx({ name: cv.name, text: cv.extractedText });
+    // The user's own Word document (an upload, or a tailored copy of one) is
+    // served as it is - rebuilding it from text would throw its formatting away.
+    const buffer =
+      cv.fileKey && cv.fileMimeType === DOCX_MIME_TYPE
+        ? await getFile(user.id, cv.fileKey)
+        : await renderCvDocx({ name: cv.name, text: cv.extractedText });
     return new NextResponse(new Blob([new Uint8Array(buffer)]), {
       headers: {
         "Content-Type":
