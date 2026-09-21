@@ -198,6 +198,13 @@ a green test suite said nothing about whether a single AI call would succeed.
 - Cover letters and recruiter messages (the same verified code path as
   tailoring, but not individually run)
 - The application tracker
+- **The Docker images themselves.** `docker-compose.local.yml` (app + its own
+  PostgreSQL, see `docs/running-locally.md`) and `docker-compose.yml` (server,
+  with Caddy) have never been built: there was no Docker on the development
+  machine. What *is* verified is the part most likely to break inside a
+  container — a production build from a clean copy with no `.env`, with the
+  placeholder `DATABASE_URL` the Dockerfile uses, and the resulting standalone
+  server answering `/login` and `/register` (21 September 2026).
 
 ## Next steps
 

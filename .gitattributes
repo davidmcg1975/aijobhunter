@@ -1,0 +1,6 @@
+# Shell scripts and container files run on Linux: a Windows checkout must not
+# give them CRLF endings, or bash fails with ": command not found".
+*.sh text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+*.yml text eol=lf

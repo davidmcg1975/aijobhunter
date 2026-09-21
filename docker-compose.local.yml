@@ -1,0 +1,78 @@
+# Run the whole application on your own machine.
+#
+#   docker compose -f docker-compose.local.yml up --build
+#
+# Then open http://localhost:3000. See docs/running-locally.md.
+#
+# This is separate from docker-compose.yml, which is the server deployment:
+# that one puts Caddy in front and requests a TLS certificate for a public
+# domain, which cannot work on a laptop. Here there is no proxy, and the
+# database is a PostgreSQL container rather than a hosted one, so nothing
+# leaves your machine except calls to the job boards and the AI API.
+
+# Every service connects to the database container, never to whatever
+# DATABASE_URL happens to be in .env. Overriding both variables matters:
+# prisma.config.ts prefers DATABASE_URL_DIRECT, so leaving it set from a copied
+# .env would point the schema push at someone else's hosted database.
+x-local-database: &local-database
+  DATABASE_URL: "postgresql://contracthunter:contracthunter@db:5432/contracthunter"
+  DATABASE_URL_DIRECT: "postgresql://contracthunter:contracthunter@db:5432/contracthunter"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contracthunter
+      POSTGRES_PASSWORD: contracthunter
+      POSTGRES_DB: contracthunter
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    # Not published to the host. Only the other containers can reach it, so
+    # the fixed password above is not an exposure.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contracthunter -d contracthunter"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Creates or updates the schema, then exits. The production image carries
+  # no Prisma CLI, so this runs from the build stage, which has the full
+  # node_modules. db push is additive for new columns and tables; it stops
+  # and says so rather than drop data it would lose.
+  migrate:
+    build:
+      context: .
+      target: builder
+    env_file: .env
+    environment:
+      <<: *local-database
+    command: ["npx", "prisma", "db", "push"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *local-database
+      APP_URL: "http://localhost:3000"
+      STORAGE_DRIVER: "local"
+      STORAGE_LOCAL_DIR: "./storage"
+    # Bound to 127.0.0.1 so the app is reachable from this machine only, not
+    # from anyone else on the same Wi-Fi.
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Uploaded CVs and generated documents.
+      - uploads:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db_data:
+  uploads:

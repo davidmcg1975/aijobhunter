@@ -25,6 +25,20 @@ than guessed.
 
 ## Getting started
 
+### With Docker (easiest)
+
+Nothing to install except Docker; it brings its own database.
+
+```bash
+cp .env.example .env     # then set AUTH_SECRET, ALLOWED_SIGNUP_EMAILS and your API keys
+docker compose -f docker-compose.local.yml up --build
+```
+
+Open <http://localhost:3000> and register. Full walkthrough, including where
+to get the keys: [`docs/running-locally.md`](docs/running-locally.md).
+
+### Without Docker
+
 Node.js 20+, and a PostgreSQL database. A free [Neon](https://neon.tech)
 database takes about two minutes and is what this runs on.
 
@@ -128,6 +142,7 @@ Two things decide the hosting before anything else:
 | [`docs/ai-spec.md`](docs/ai-spec.md) | Prompts, grounding, and how fabrication is caught |
 | [`docs/adzuna.md`](docs/adzuna.md) | Adzuna integration and licensing |
 | [`docs/job-sources.md`](docs/job-sources.md) | Adding a job source, and which ones permit it |
+| [`docs/running-locally.md`](docs/running-locally.md) | Running it on your own machine with Docker |
 | [`docs/deployment.md`](docs/deployment.md) | Hosting requirements and the go-live checklist |
 | [`progress/progress.md`](progress/progress.md) | Current state and next steps |
 
