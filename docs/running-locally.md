@@ -37,7 +37,7 @@ billing, and should not be shared between people.
 
 | Key | Needed for | Where |
 | --- | --- | --- |
-| Anthropic | Advert analysis, CV reading, tailoring, cover letters | [console.anthropic.com](https://console.anthropic.com) → API Keys. Pay-as-you-go; add a few pounds of credit. |
+| Anthropic **or** OpenAI | Advert analysis, CV reading, tailoring, cover letters | Pick whichever AI you prefer - you only need one. Claude: [console.anthropic.com](https://console.anthropic.com) → API Keys. ChatGPT: [platform.openai.com/api-keys](https://platform.openai.com/api-keys) - an **API** key, billed per use and separate from a ChatGPT Plus subscription. Either way, add a few pounds of credit. |
 | Adzuna | Job search | [developer.adzuna.com](https://developer.adzuna.com) → register → App ID + App Key. Free. |
 | Careerjet | A second job source (optional) | [careerjet.com/partners](https://www.careerjet.com/partners/) → publisher account. See the note below. |
 
@@ -104,8 +104,9 @@ after signing in, try one of them.
 
 ## 6. First steps in the app
 
-1. **Settings → API keys**: paste in your Anthropic and Adzuna keys (and
-   Careerjet, if you have one). They are encrypted before they are stored.
+1. **Settings → AI provider**: choose Claude or ChatGPT. Then **API keys**:
+   paste in the key for that AI, plus your Adzuna keys (and Careerjet, if you
+   have one). They are encrypted before they are stored.
 2. **My CV → Upload a CV** (PDF or Word). The AI extracts your roles and
    skills. **Review what it found before confirming** — it is a draft, and
    everything the app writes for you later is checked against what you confirm
@@ -179,8 +180,12 @@ anything; ask before forcing it.
 in `ALLOWED_SIGNUP_EMAILS`. Add it, then
 `docker compose -f docker-compose.local.yml up -d` to pick up the change.
 
-**"Anthropic rejected your API key"** — it was mistyped or has been revoked.
-Replace it under Settings → API keys.
+**"… rejected your API key"** — it was mistyped, has been revoked, or (for
+OpenAI) the account has no credit. Replace it under Settings → API keys.
+
+**"AI features are off until the chosen provider has a key"** — you picked
+an AI under Settings → AI provider but have not saved a key for it. The app
+will not switch to the other one on its own.
 
 **Job search returns nothing / an error about a source** — check the keys
 under Settings → API keys. For Careerjet, check your current IP is registered with them.

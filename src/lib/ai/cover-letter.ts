@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { AiUnavailableError, callAi, parseJsonResponse } from "./client";
 import { COVER_LETTER_SYSTEM, coverLetterPrompt } from "./prompts";
 import { verifyGrounding, type GroundingReport } from "./grounding";
@@ -49,11 +48,10 @@ export async function generateCoverLetter(params: {
     );
   }
 
-  const config = env();
   const response = await callAi({
     operation: "coverletter.generate",
     userId,
-    model: config.AI_MODEL_WRITING,
+    tier: "writing",
     system: COVER_LETTER_SYSTEM,
     prompt: coverLetterPrompt({
       profileSummary: context.summary,
@@ -120,11 +118,10 @@ export async function draftRecruiterMessage(params: {
 
   if (!job) throw new Error("Job not found");
 
-  const config = env();
   const response = await callAi({
     operation: "coverletter.generate",
     userId: params.userId,
-    model: config.AI_MODEL_WRITING,
+    tier: "writing",
     system: COVER_LETTER_SYSTEM,
     prompt: `
 Draft a message to the recruiter advertising this role.

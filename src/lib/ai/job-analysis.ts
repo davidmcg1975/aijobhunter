@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { callAi, parseJsonResponse } from "./client";
 import { JOB_ANALYSIS_SYSTEM, PROMPT_VERSION, jobAnalysisPrompt } from "./prompts";
 import { canonicaliseList } from "@/lib/matching/skills";
@@ -52,11 +51,10 @@ export async function analyseJob(jobId: string, userId?: string | null) {
     return job.analysis;
   }
 
-  const config = env();
   const response = await callAi({
     operation: "job.analyse",
     userId,
-    model: config.AI_MODEL_ANALYSIS,
+    tier: "analysis",
     system: JOB_ANALYSIS_SYSTEM,
     prompt: jobAnalysisPrompt({
       title: job.title,

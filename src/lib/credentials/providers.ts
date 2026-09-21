@@ -1,5 +1,5 @@
 import "server-only";
-import { ANTHROPIC_CREDENTIAL } from "@/lib/ai/credentials";
+import { AI_PROVIDERS, AI_PROVIDER_IDS } from "@/lib/ai/credentials";
 import { allSources } from "@/lib/jobsources/registry";
 import type { CredentialField } from "./fields";
 
@@ -20,10 +20,10 @@ export type CredentialProvider = {
  */
 export function credentialProviders(): CredentialProvider[] {
   return [
-    {
-      ...ANTHROPIC_CREDENTIAL,
-      installationConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
-    },
+    ...AI_PROVIDER_IDS.map((id) => {
+      const { environmentKey, ...provider } = AI_PROVIDERS[id];
+      return { ...provider, installationConfigured: Boolean(environmentKey()) };
+    }),
     ...allSources().map((source) => ({
       id: source.id,
       displayName: source.displayName,

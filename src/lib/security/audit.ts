@@ -21,6 +21,7 @@ export type AuditAction =
   | "user.data_exported"
   | "credentials.saved"
   | "credentials.removed"
+  | "ai.provider_changed"
   | "cv.uploaded"
   | "cv.deleted"
   | "cv.tailored"

@@ -6,7 +6,7 @@ import {
   type CredentialField,
 } from "@/lib/credentials/fields";
 import { allSources } from "@/lib/jobsources/registry";
-import { ANTHROPIC_CREDENTIAL } from "@/lib/ai/credentials";
+import { AI_PROVIDERS, AI_PROVIDER_IDS } from "@/lib/ai/credentials";
 
 const SECRET = "a-test-auth-secret-that-is-at-least-32-chars";
 const CONTEXT = "user_1:anthropic";
@@ -117,6 +117,7 @@ describe("credentialHint", () => {
 // strict is caught here rather than by a user who cannot save a genuine key.
 const EXAMPLE_KEYS: Record<string, Record<string, string>> = {
   anthropic: { apiKey: "sk-ant-api03-AbC_dEf-123456789012345678901234567890" },
+  openai: { apiKey: "sk-proj-AbC_dEf-123456789012345678901234567890" },
   adzuna: { appId: "1a2b3c4d", appKey: "0123456789abcdef0123456789abcdef" },
   reed: { apiKey: "12345678-abcd-4ef0-9876-0123456789ab" },
   careerjet: { apiKey: "0123456789abcdef0123456789abcdef" },
@@ -124,7 +125,7 @@ const EXAMPLE_KEYS: Record<string, Record<string, string>> = {
 
 describe("provider credential fields", () => {
   const providers = [
-    { id: ANTHROPIC_CREDENTIAL.id, fields: ANTHROPIC_CREDENTIAL.fields as CredentialField[] },
+    ...AI_PROVIDER_IDS.map((id) => ({ id, fields: AI_PROVIDERS[id].fields })),
     ...allSources().map((s) => ({ id: s.id, fields: s.credentialFields })),
   ];
 
@@ -140,7 +141,7 @@ describe("provider credential fields", () => {
   }
 
   it("anthropic rejects something that is not an Anthropic key", () => {
-    const result = validateCredentialValues(ANTHROPIC_CREDENTIAL.fields, {
+    const result = validateCredentialValues(AI_PROVIDERS.anthropic.fields, {
       apiKey: "0123456789abcdef0123456789abcdef",
     });
     expect(result).toEqual({ ok: false, error: "An Anthropic API key starts with sk-ant-." });

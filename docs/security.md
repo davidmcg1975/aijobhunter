@@ -165,6 +165,10 @@ Careerjet account instead of the installation's.
   four characters reveal nothing useful.
 - **Never logged.** The audit log records that a key was saved or removed and
   for which provider - not the value, and not the hint.
+- **The AI provider choice is binding.** A user who picks ChatGPT has their
+  CV sent to OpenAI only; if they have no OpenAI key, AI features are off
+  rather than falling back to Anthropic. Changes of choice are audited
+  (`ai.provider_changed`), since they change who processes personal data.
 - **Used only for its owner.** Searches and AI calls a user makes use their
   key; background jobs use only the installation's.
 - **Rotating `AUTH_SECRET` makes saved keys unreadable.** That is the price of

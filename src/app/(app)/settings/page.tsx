@@ -9,7 +9,8 @@ import {
 } from "@/components/settings-panels";
 import { ApiKeysPanel, type ApiKeyProviderView } from "@/components/api-keys-panel";
 import { sourceStatusFor } from "@/lib/jobsources/credentials";
-import { aiAvailableFor } from "@/lib/ai/credentials";
+import { AI_PROVIDERS, AI_PROVIDER_IDS, getAiPreference, resolveAi } from "@/lib/ai/credentials";
+import { AiProviderChoice, type AiProviderOption } from "@/components/ai-provider-choice";
 import { credentialProviders } from "@/lib/credentials/providers";
 import { listUserCredentialStatus } from "@/lib/credentials/store";
 import { features } from "@/lib/env";
@@ -19,11 +20,23 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [sources, aiAvailable, savedKeys] = await Promise.all([
+  const [sources, activeAi, aiPreference, savedKeys] = await Promise.all([
     sourceStatusFor(user.id),
-    aiAvailableFor(user.id),
+    resolveAi(user.id),
+    getAiPreference(user.id),
     listUserCredentialStatus(user.id),
   ]);
+  const aiAvailable = activeAi !== null;
+  const aiName = activeAi ? AI_PROVIDERS[activeAi.provider].displayName : null;
+
+  const aiOptions: AiProviderOption[] = AI_PROVIDER_IDS.map((id) => {
+    const own = savedKeys.some((k) => k.provider === id && !k.unreadable);
+    return {
+      id,
+      displayName: AI_PROVIDERS[id].displayName,
+      key: own ? "own" : AI_PROVIDERS[id].environmentKey() ? "installation" : "none",
+    };
+  });
 
   // Only what the browser needs to render the form. Field patterns stay on
   // the server, where validation happens, and no key value is ever included.
@@ -47,6 +60,11 @@ export default async function SettingsPage() {
       <EmailVerification verified={Boolean(user.emailVerified)} />
       <RescoreJobs />
       <ChangePassword />
+      <AiProviderChoice
+        preference={aiPreference}
+        active={activeAi?.provider ?? null}
+        options={aiOptions}
+      />
       <ApiKeysPanel providers={keyProviders} />
 
       <section className="card" style={{ padding: "1.2rem", marginBottom: "1.2rem" }}>
@@ -67,7 +85,7 @@ export default async function SettingsPage() {
           <li>
             AI features:{" "}
             {aiAvailable ? (
-              <span style={{ color: "var(--success)" }}>connected</span>
+              <span style={{ color: "var(--success)" }}>connected ({aiName})</span>
             ) : (
               <span className="subtle">not configured</span>
             )}
@@ -88,10 +106,11 @@ export default async function SettingsPage() {
           How your data is processed
         </h2>
         <p className="muted" style={{ margin: "0 0 0.6rem", fontSize: "0.9rem" }}>
-          Your CV text and structured profile are sent to Anthropic&apos;s API to
-          analyse job adverts, score matches and draft documents. They are not
-          used to train models. Job adverts are fetched from the sources listed
-          above.
+          Your CV text and structured profile are sent to{" "}
+          {aiName ?? "the AI provider you choose above"} to read your CV, analyse
+          job adverts and draft documents - and only to that provider. Neither
+          Anthropic nor OpenAI uses API data to train models by default. Job
+          adverts are fetched from the sources listed above.
         </p>
         <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
           Match scores themselves are calculated on this server, not by an AI

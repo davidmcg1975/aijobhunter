@@ -71,6 +71,18 @@ rather than reading the environment. Design and trade-offs in
 `docs/security.md`. Unit tested (encryption, validation, every provider's
 key shape); schema applied to Neon.
 
+### ChatGPT as an alternative AI (21 September 2026)
+
+Each user chooses Claude (Anthropic) or ChatGPT (OpenAI) under Settings → AI
+provider. OpenAI is called through its Responses API with plain fetch
+(`gpt-5.6-terra` for analysis, `gpt-5.6-sol` for writing). Grounding, Zod
+validation and scoring are unchanged and provider-agnostic. Verified: the
+refactored Claude path with a real call; choosing ChatGPT with no key turns AI
+off rather than falling back; an Anthropic key pasted into the OpenAI box is
+refused. **Not yet verified: a real OpenAI call** - there is no OpenAI key in
+this environment. Request building and response parsing are unit tested
+against OpenAI's documented format, but the first real call is the real test.
+
 ### Now on hosted PostgreSQL (20 September 2026)
 
 Moved off the embedded database to **Neon, eu-west-2 (London)** - London

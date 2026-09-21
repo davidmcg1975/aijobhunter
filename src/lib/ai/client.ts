@@ -1,17 +1,28 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
-import { resolveAnthropicKey } from "./credentials";
+import { AI_PROVIDERS, resolveAi } from "./credentials";
+import { callAnthropic } from "./anthropic";
+import { callOpenAi } from "./openai";
+import {
+  AiProviderAuthError,
+  AiProviderError,
+  type AiEffort,
+  type AiProviderId,
+  type ProviderCall,
+  type ProviderResult,
+} from "./provider";
+
+export type { AiEffort } from "./provider";
 
 /**
- * The only place the Anthropic API is called. Everything goes through here so
- * that usage, cost and failures are recorded, and so keys are used in exactly
- * one module - it must never be imported into a client component.
+ * The only place an AI provider is called. Everything goes through here so
+ * that usage, cost and failures are recorded the same way for every provider,
+ * and so keys are used in exactly one module - it must never be imported into
+ * a client component.
  *
- * The key is resolved per call: the user's own when they have saved one in
- * Settings, otherwise the installation's. A client is cheap to construct, and
- * caching one per key would keep users' keys in memory for no benefit.
+ * The provider and key are resolved per call from the user's choice in
+ * Settings (see chooseAi() in ./credentials.ts).
  */
 
 export class AiUnavailableError extends Error {
@@ -28,15 +39,48 @@ export class AiResponseError extends Error {
   }
 }
 
+const ADAPTERS: Record<AiProviderId, (call: ProviderCall) => Promise<ProviderResult>> = {
+  anthropic: callAnthropic,
+  openai: callOpenAi,
+};
+
+/**
+ * Callers say what kind of work it is, not which model: the model depends on
+ * which provider the user chose.
+ */
+export type AiTier = "analysis" | "writing";
+
+function modelFor(provider: AiProviderId, tier: AiTier): string {
+  const config = env();
+  if (provider === "openai") {
+    return tier === "writing" ? config.OPENAI_MODEL_WRITING : config.OPENAI_MODEL_ANALYSIS;
+  }
+  return tier === "writing" ? config.AI_MODEL_WRITING : config.AI_MODEL_ANALYSIS;
+}
+
 /**
  * List price in US dollars per million tokens.
- * Source: Anthropic published pricing. Update alongside any model change.
+ * Source: Anthropic and OpenAI published pricing. Update alongside any model
+ * change. gpt-5.6-sol is on promotional pricing until at least November 2026.
  */
 const PRICING_USD: Record<string, { input: number; output: number }> = {
   "claude-opus-5": { input: 5, output: 25 },
   "claude-sonnet-5": { input: 2, output: 10 },
   "claude-haiku-4-5": { input: 1, output: 5 },
+  "gpt-6-astra": { input: 10, output: 50 },
+  "gpt-5.6-sol": { input: 4, output: 20 },
+  "gpt-5.6-terra": { input: 2, output: 12 },
+  "gpt-5.6-luna": { input: 0.2, output: 1.2 },
 };
+
+/**
+ * An unlisted model (someone set a different one in .env) is costed at the
+ * most expensive listed price, so the budget errs towards stopping early
+ * rather than letting spend run past it.
+ */
+const FALLBACK_PRICE = Object.values(PRICING_USD).reduce((max, p) =>
+  p.output > max.output ? p : max,
+);
 
 /**
  * Budgets are denominated in pence, so dollar prices are converted at a fixed
@@ -50,7 +94,7 @@ function estimateCostPence(
   inputTokens: number,
   outputTokens: number,
 ): number {
-  const price = PRICING_USD[model] ?? PRICING_USD["claude-sonnet-5"]!;
+  const price = PRICING_USD[model] ?? FALLBACK_PRICE;
   const dollars =
     (inputTokens / 1_000_000) * price.input +
     (outputTokens / 1_000_000) * price.output;
@@ -65,21 +109,12 @@ export type AiOperation =
   | "match.explain"
   | "assistant.chat";
 
-/**
- * How hard the model should work. Maps to output_config.effort.
- *
- * Note there is deliberately no temperature option: sampling parameters
- * (temperature / top_p / top_k) are rejected with a 400 on Claude Opus 5 and
- * Sonnet 5. Effort is the supported control.
- */
-export type AiEffort = "low" | "medium" | "high" | "xhigh" | "max";
-
 export type AiCallOptions = {
   operation: AiOperation;
   userId?: string | null;
   system: string;
   prompt: string;
-  model?: string;
+  tier?: AiTier;
   maxTokens?: number;
   effort?: AiEffort;
 };
@@ -93,39 +128,30 @@ export type AiCallResult = {
 
 export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
   const config = env();
-  const model = options.model ?? config.AI_MODEL_ANALYSIS;
 
-  const key = await resolveAnthropicKey(options.userId);
-  if (!key) {
+  const resolved = await resolveAi(options.userId);
+  if (!resolved) {
     throw new AiUnavailableError(
-      "AI features are not set up. Add an Anthropic API key under Settings.",
+      "AI features are not set up. Choose an AI provider and add its API key under Settings → API keys.",
     );
   }
+  const { provider, apiKey, ownKey } = resolved;
+  const model = modelFor(provider, options.tier ?? "analysis");
 
   // The installation's budget protects the installation's bill. A user's own
-  // key is billed to them, and capped by them in the Anthropic console.
-  if (!key.ownKey) await assertWithinBudget(config.AI_MONTHLY_BUDGET_PENCE);
+  // key is billed to them, and capped by them with their provider.
+  if (!ownKey) await assertWithinBudget(config.AI_MONTHLY_BUDGET_PENCE);
 
   const started = Date.now();
   try {
-    const response = await new Anthropic({ apiKey: key.apiKey }).messages.create({
+    const { text, inputTokens, outputTokens } = await ADAPTERS[provider]({
+      apiKey,
       model,
-      max_tokens: options.maxTokens ?? 4096,
       system: options.system,
-      messages: [{ role: "user", content: options.prompt }],
-      // Effort replaces temperature on current models. Cast because the
-      // installed SDK's types may predate output_config.
-      ...({ output_config: { effort: options.effort ?? "medium" } } as object),
+      prompt: options.prompt,
+      maxTokens: options.maxTokens ?? 4096,
+      effort: options.effort ?? "medium",
     });
-
-    const text = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
-
-    const inputTokens = response.usage.input_tokens;
-    const outputTokens = response.usage.output_tokens;
 
     await recordUsage({
       operation: options.operation,
@@ -134,7 +160,7 @@ export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
       inputTokens,
       outputTokens,
       succeeded: true,
-      ownKey: key.ownKey,
+      ownKey,
     });
 
     if (!text) {
@@ -143,6 +169,8 @@ export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
 
     return { text, model, inputTokens, outputTokens };
   } catch (error) {
+    if (error instanceof AiResponseError) throw error;
+
     await recordUsage({
       operation: options.operation,
       userId: options.userId,
@@ -151,40 +179,35 @@ export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
       outputTokens: 0,
       succeeded: false,
       errorCode: errorCodeOf(error),
-      ownKey: key.ownKey,
+      ownKey,
     });
-
-    if (error instanceof AiResponseError || error instanceof AiUnavailableError) {
-      throw error;
-    }
 
     // Only a user's own key is theirs to fix; a rejected installation key is
     // an operator problem and gets the generic message below.
-    if (
-      key.ownKey &&
-      error instanceof Anthropic.APIError &&
-      (error.status === 401 || error.status === 403)
-    ) {
+    if (ownKey && error instanceof AiProviderAuthError) {
       throw new AiUnavailableError(
-        "Anthropic rejected your API key. Check it under Settings → API keys.",
+        `${AI_PROVIDERS[provider].displayName} rejected your API key. Check it under Settings → API keys.`,
       );
     }
 
     console.error("[ai] call failed", {
       operation: options.operation,
+      provider,
       model,
       ms: Date.now() - started,
       code: errorCodeOf(error),
     });
 
     throw new AiResponseError(
-      "The AI service could not complete this request. Please try again.",
+      error instanceof AiProviderError && error.code === "REFUSED"
+        ? error.message
+        : "The AI service could not complete this request. Please try again.",
     );
   }
 }
 
 function errorCodeOf(error: unknown): string {
-  if (error instanceof Anthropic.APIError) return `API_${error.status ?? "ERR"}`;
+  if (error instanceof AiProviderError) return error.code;
   if (error instanceof Error) return error.name;
   return "UNKNOWN";
 }

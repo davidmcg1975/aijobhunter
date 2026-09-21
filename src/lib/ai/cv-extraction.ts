@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { callAi, parseJsonResponse } from "./client";
 import { CV_EXTRACTION_SYSTEM, cvExtractionPrompt } from "./prompts";
 import { canonicaliseList } from "@/lib/matching/skills";
@@ -72,12 +71,11 @@ export async function extractCvStructure(params: {
   userId: string;
   text: string;
 }): Promise<ExtractedCv> {
-  const config = env();
 
   const response = await callAi({
     operation: "cv.extract",
     userId: params.userId,
-    model: config.AI_MODEL_ANALYSIS,
+    tier: "analysis",
     system: CV_EXTRACTION_SYSTEM,
     prompt: cvExtractionPrompt(params.text),
     maxTokens: 8192,

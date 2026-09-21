@@ -70,14 +70,30 @@ and failures, and enforces `AI_MONTHLY_BUDGET_PENCE`.
 | `cv.tailor` | writing | tailored CV for one vacancy | yes |
 | `coverletter.generate` | writing | covering letter | yes |
 
-Model choice is configurable. Defaults: `claude-sonnet-5` for extraction and
-analysis (high volume, structured output), `claude-opus-5` for writing (fewer
-calls, quality matters more).
+Each user chooses Claude (Anthropic) or ChatGPT (OpenAI) in Settings. Callers
+ask for a tier, and each provider maps it to a model, configurable in `.env`:
+
+| Tier | Claude | ChatGPT |
+| --- | --- | --- |
+| analysis (high volume, structured output) | `claude-sonnet-5` | `gpt-5.6-terra` |
+| writing (fewer calls, quality matters more) | `claude-opus-5` | `gpt-5.6-sol` |
+
+The pairs are matched on role and price: Terra is OpenAI's balance of
+capability and cost ($2/$12 per million tokens against Sonnet's $2/$10), Sol
+its flagship ($4/$20, promotional until at least November 2026, against
+Opus's $5/$25). Prompts, grounding verification and Zod validation are the
+same for both - the provider changes who writes the draft, not how it is
+checked.
+
+An explicit choice is never overridden: with no key for the chosen provider,
+AI features are off rather than quietly sent to the other one, because the
+choice decides which company receives the user's CV.
 
 **Sampling parameters are not used, and must not be.** `temperature`, `top_p`
 and `top_k` are rejected with a 400 on Claude Opus 5 and Sonnet 5
-("`temperature` is deprecated for this model"). Depth and cost are controlled
-with `output_config.effort` instead:
+("`temperature` is deprecated for this model"), and by OpenAI's reasoning
+models. Depth and cost are controlled with effort instead
+(`output_config.effort` / `reasoning.effort`; both accept the same levels):
 
 | Operation | Effort | Why |
 | --- | --- | --- |

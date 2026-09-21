@@ -52,6 +52,11 @@ const serverSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL_ANALYSIS: z.string().default("claude-sonnet-5"),
   AI_MODEL_WRITING: z.string().default("claude-opus-5"),
+  // ChatGPT, for users who choose OpenAI. Terra is OpenAI's balance of
+  // capability and cost (the Sonnet equivalent); Sol its flagship (Opus).
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL_ANALYSIS: z.string().default("gpt-5.6-terra"),
+  OPENAI_MODEL_WRITING: z.string().default("gpt-5.6-sol"),
   AI_MONTHLY_BUDGET_PENCE: z.coerce.number().int().nonnegative().default(500_00),
 
   // --- Storage ---------------------------------------------------------
@@ -90,6 +95,5 @@ export const features = {
   adzuna: () => Boolean(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY),
   reed: () => Boolean(process.env.REED_API_KEY),
   careerjet: () => Boolean(process.env.CAREERJET_API_KEY),
-  ai: () => Boolean(process.env.ANTHROPIC_API_KEY),
   email: () => Boolean(process.env.SMTP_URL),
 };

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { AI_PROVIDERS, isAiProviderId } from "@/lib/ai/credentials";
 import { audit } from "@/lib/security/audit";
 import { checkRateLimit, RateLimitedError } from "@/lib/security/rate-limit";
 import { credentialHint, validateCredentialValues } from "@/lib/credentials/fields";
@@ -71,4 +73,32 @@ export async function removeCredentialsAction(providerId: string): Promise<Crede
   revalidatePath("/settings");
   revalidatePath("/jobs");
   return { success: `${provider.displayName} key removed.` };
+}
+
+/**
+ * Which AI provider receives this user's CV. "auto" clears the choice (see
+ * chooseAi()). Audited, because it changes who processes personal data.
+ */
+export async function setAiProviderAction(
+  _previous: CredentialState,
+  formData: FormData,
+): Promise<CredentialState> {
+  const user = await requireUser();
+  const choice = String(formData.get("aiProvider") ?? "");
+  if (choice !== "auto" && !isAiProviderId(choice)) return { error: "Unknown AI provider." };
+
+  const aiProvider = choice === "auto" ? null : choice;
+  await prisma.user.update({ where: { id: user.id }, data: { aiProvider } });
+  await audit({
+    action: "ai.provider_changed",
+    userId: user.id,
+    metadata: { provider: choice },
+  });
+
+  revalidatePath("/settings");
+  return {
+    success: aiProvider
+      ? `AI features will use ${AI_PROVIDERS[aiProvider].displayName}.`
+      : "AI features will use whichever provider you have a key for.",
+  };
 }

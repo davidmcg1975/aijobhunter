@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { callAi, AiUnavailableError, parseJsonResponse } from "./client";
 import { CV_TAILORING_SYSTEM, cvTailoringPrompt } from "./prompts";
 import { verifyGrounding, type GroundingReport } from "./grounding";
@@ -63,11 +62,10 @@ export async function tailorCv(params: {
     );
   }
 
-  const config = env();
   const response = await callAi({
     operation: "cv.tailor",
     userId,
-    model: config.AI_MODEL_WRITING,
+    tier: "writing",
     system: CV_TAILORING_SYSTEM,
     prompt: cvTailoringPrompt({
       masterCv: sourceCv.extractedText,

@@ -128,12 +128,24 @@ Other AI rules:
 
 - All AI calls go through `callAi()` in `src/lib/ai/client.ts` so that usage,
   cost and failures are recorded and the monthly budget is enforced.
-- **Never pass `temperature`, `top_p` or `top_k`.** They are rejected with a
-  400 ("deprecated for this model") on Claude Opus 5 and Sonnet 5. Control
-  depth and cost with `output_config.effort` instead - `callAi()` exposes it
-  as the `effort` option. This was found by running the code, not by reading
-  the types: the SDK accepts the parameter and the server refuses it.
-- Model IDs carry no date suffix: `claude-opus-5`, `claude-sonnet-5`.
+- **Two providers: Claude (Anthropic) and ChatGPT (OpenAI).** Each user
+  chooses in Settings; `chooseAi()` in `src/lib/ai/credentials.ts` applies the
+  rules. An explicit choice is binding - with no key for it, AI is off; it
+  never falls back to the other provider, because the choice decides which
+  company receives the user's CV. Callers pass a `tier` ("analysis" or
+  "writing"), never a model name; each provider maps the tier to its model.
+  Grounding, Zod validation and deterministic scoring apply identically to
+  both - nothing downstream may branch on the provider.
+- **Never pass `temperature`, `top_p` or `top_k`** to either provider. They
+  are rejected with a 400 ("deprecated for this model") on Claude Opus 5 and
+  Sonnet 5, and by OpenAI's reasoning models. Control depth and cost with the
+  `effort` option (Anthropic `output_config.effort`, OpenAI
+  `reasoning.effort`). This was found by running the code, not by reading the
+  types: the SDK accepts the parameter and the server refuses it.
+- Model IDs carry no date suffix: `claude-opus-5`, `claude-sonnet-5`;
+  `gpt-5.6-sol`, `gpt-5.6-terra`.
+- The OpenAI adapter uses the Responses API over plain `fetch` - no SDK. Its
+  `max_output_tokens` includes hidden reasoning, hence `REASONING_HEADROOM`.
 - Model output is untrusted input: validate it with Zod before it reaches the
   database.
 - Bump `PROMPT_VERSION` when a prompt changes materially. Stored analyses record
@@ -200,7 +212,7 @@ another user cannot be decrypted. A decrypted key never goes to the browser -
 the settings page gets the last four characters and nothing else - and is
 never logged or audited (audit records the provider name only).
 
-`callAi()` resolves the Anthropic key per call. Spend on a user's own key is
+`callAi()` resolves the provider and key per call. Spend on a user's own key is
 recorded with `ownKey: true` and is **not** counted against
 `AI_MONTHLY_BUDGET_PENCE`, which protects the installation's bill only.
 

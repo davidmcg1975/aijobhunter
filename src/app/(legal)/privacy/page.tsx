@@ -58,10 +58,13 @@ export default function PrivacyPage() {
 
       <h2>AI processing</h2>
       <p>
-        Your CV text and structured profile are sent to the Anthropic API to
-        analyse job adverts, explain match scores and draft application
-        documents. Anthropic acts as our processor and does not use this data to
-        train models. Match scores themselves are calculated on our own servers,
+        Your CV text and structured profile are sent to the AI provider you
+        choose in Settings &mdash; Anthropic (Claude) or OpenAI (ChatGPT) &mdash;
+        to read your CV, analyse job adverts and draft application documents.
+        Only the provider you choose receives it. Both act as processors and do
+        not use API data to train models by default. If you enter your own API
+        key, the processing is also under your own agreement with that
+        provider. Match scores themselves are calculated on our own servers,
         not by an AI model.
       </p>
       <p>
@@ -72,7 +75,10 @@ export default function PrivacyPage() {
 
       <h2>Who else sees it</h2>
       <ul>
-        <li>Anthropic, for the AI processing described above.</li>
+        <li>
+          Anthropic or OpenAI, whichever you choose, for the AI processing
+          described above.
+        </li>
         <li>Our hosting and database providers.</li>
         <li>Our email provider, for service emails.</li>
         <li>
