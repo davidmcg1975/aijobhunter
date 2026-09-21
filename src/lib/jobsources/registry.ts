@@ -26,6 +26,14 @@ export function getSource(id: string): JobSource | undefined {
 }
 
 /**
+ * What to call a job's source on screen. Falls back to the stored id for a
+ * provider no longer registered, so old jobs still say where they came from.
+ */
+export function sourceDisplayName(id: string): string {
+  return getSource(id)?.displayName ?? id;
+}
+
+/**
  * The installation's own configuration only - for the admin page. What a
  * particular user can search, including with their own keys, is
  * sourceStatusFor() in ./credentials.ts.

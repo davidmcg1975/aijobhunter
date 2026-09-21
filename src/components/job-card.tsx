@@ -26,9 +26,12 @@ type JobSummary = {
 export function JobCard({
   job,
   breakdown,
+  sourceName,
 }: {
   job: JobSummary;
   breakdown?: MatchBreakdown | null;
+  /** Which job board the advert came from, e.g. "Careerjet". */
+  sourceName?: string;
 }) {
   const strengths = breakdown?.strengths.slice(0, 4) ?? [];
   const gaps = breakdown?.gaps.slice(0, 2) ?? [];
@@ -50,9 +53,11 @@ export function JobCard({
               {job.title}
             </Link>
           </h3>
-          {job.company && (
+          {(job.company || sourceName) && (
             <div className="muted" style={{ fontSize: "0.88rem" }}>
               {job.company}
+              {job.company && sourceName && " · "}
+              {sourceName && <span className="subtle">via {sourceName}</span>}
             </div>
           )}
         </div>

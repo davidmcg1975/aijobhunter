@@ -227,3 +227,25 @@ should be checked on the first call that gets through.
 
 Check each one's terms independently. Several explicitly forbid storing or
 re-serving listings, which this application does by design.
+
+## Relevance filtering
+
+Providers interpret keywords loosely: asked for "test analyst", Careerjet
+returned HR, SAP and finance analysts on the strength of "analyst" alone (6 of
+its first 104 results were testing roles). So every result is checked against
+the user's words before it is stored, identically for every provider, in
+`src/lib/jobsources/relevance.ts`:
+
+- **All of these words** (default): every word appears in the title or advert,
+  matched at the start of a word ("test" finds "testing", not "latest"), **and
+  at least one is in the title**. Words alone cannot tell a Media Manager
+  advert mentioning "stands the test of time" and "analyst data" from a Test
+  Analyst; the title can. "QA Analyst" still matches "test analyst".
+- **Any of these words** / **This exact phrase**: applied to the whole advert,
+  as asked, with no title rule.
+
+Skipped results are counted in the search message, never dropped silently.
+The stored-jobs list applies the same rule, so the search and the list agree,
+and after a search it shows that search's results sorted by match score.
+Because Careerjet and Adzuna return only an extract, a genuine match worded
+differently can be skipped; "Any of these words" widens the net.

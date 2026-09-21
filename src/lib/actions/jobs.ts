@@ -19,7 +19,12 @@ import {
 } from "@/lib/jobsources/description";
 import { detectIr35, detectRemote } from "@/lib/jobsources/parse";
 
-export type ActionResult = { error?: string; success?: string };
+export type ActionResult = {
+  error?: string;
+  success?: string;
+  /** After a live search: what was searched, so the list can show just that. */
+  searched?: { keywords: string; mode: "all" | "any" | "phrase" };
+};
 
 const searchSchema = z.object({
   keywords: z.string().trim().max(200).optional(),
@@ -81,6 +86,8 @@ export async function fetchJobsAction(
   const created = summaries.reduce((sum, s) => sum + s.created, 0);
   const received = summaries.reduce((sum, s) => sum + s.received, 0);
   const duplicates = summaries.reduce((sum, s) => sum + s.duplicates, 0);
+  const updated = summaries.reduce((sum, s) => sum + s.updated, 0);
+  const skipped = summaries.reduce((sum, s) => sum + s.skipped, 0);
 
   if (failed.length === summaries.length && summaries.length > 0) {
     return { error: failed[0]!.error! };
@@ -98,9 +105,14 @@ export async function fetchJobsAction(
   revalidatePath("/jobs");
 
   return {
-    success: `Found ${received} adverts: ${created} new, ${duplicates} duplicates merged.${
+    success: `Found ${received} adverts.${
+      skipped ? ` ${skipped} did not match your words and were skipped.` : ""
+    } Kept ${received - skipped}: ${created} new, ${updated} already stored (refreshed), ${duplicates} duplicates of other listings.${
       failed.length ? ` ${failed.length} source(s) failed.` : ""
     }`,
+    searched: parsed.data.keywords
+      ? { keywords: parsed.data.keywords, mode: parsed.data.keywordMode ?? "all" }
+      : undefined,
   };
 }
 

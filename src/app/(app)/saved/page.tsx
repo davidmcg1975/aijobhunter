@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { Container, EmptyState, PageHeader } from "@/components/ui";
 import { JobCard } from "@/components/job-card";
+import { sourceDisplayName } from "@/lib/jobsources/registry";
 import type { MatchBreakdown } from "@/lib/matching/types";
 
 export const metadata = { title: "Saved jobs" };
@@ -50,6 +51,7 @@ export default async function SavedJobsPage() {
               breakdown={
                 (row.job.matches[0]?.breakdown ?? null) as MatchBreakdown | null
               }
+              sourceName={sourceDisplayName(row.job.source)}
             />
           ))}
         </div>

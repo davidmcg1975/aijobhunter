@@ -4,6 +4,10 @@ import { Container, EmptyState, PageHeader } from "@/components/ui";
 import { JobCard } from "@/components/job-card";
 import { JobSearchPanel } from "@/components/job-search-panel";
 import { sourceStatusFor } from "@/lib/jobsources/credentials";
+import { keywordTerms, matchesKeywords, type KeywordMode } from "@/lib/jobsources/relevance";
+import { effectiveDescription } from "@/lib/jobsources/description";
+import { sourceDisplayName } from "@/lib/jobsources/registry";
+import Link from "next/link";
 import type { MatchBreakdown } from "@/lib/matching/types";
 import type { Prisma } from "@prisma/client";
 
@@ -12,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = {
   q?: string;
+  mode?: string;
   location?: string;
   minRate?: string;
   ir35?: string;
@@ -35,12 +40,26 @@ export default async function JobsPage({
     canonicalId: null,
     expiredAt: null,
   };
+  // Every condition must hold. Collected here rather than assigned to
+  // where.OR, which previously let a rate filter overwrite the keyword filter
+  // and turn "keyword AND rate" into "keyword OR rate".
+  const and: Prisma.JobWhereInput[] = [];
 
-  if (params.q) {
-    where.OR = [
-      { title: { contains: params.q, mode: "insensitive" } },
-      { description: { contains: params.q, mode: "insensitive" } },
-    ];
+  const keywordMode: KeywordMode =
+    params.mode === "any" || params.mode === "phrase" ? params.mode : "all";
+  const terms = keywordTerms(params.q);
+  const inText = (value: string): Prisma.JobWhereInput => ({
+    OR: [
+      { title: { contains: value, mode: "insensitive" } },
+      { description: { contains: value, mode: "insensitive" } },
+      { fullDescription: { contains: value, mode: "insensitive" } },
+    ],
+  });
+  if (terms.length > 0) {
+    // The same rule the live search applied when these jobs were stored.
+    if (keywordMode === "phrase") and.push(inText(terms.join(" ")));
+    else if (keywordMode === "any") and.push({ OR: terms.map(inText) });
+    else and.push(...terms.map(inText));
   }
   if (params.location) {
     where.location = { contains: params.location, mode: "insensitive" };
@@ -49,11 +68,7 @@ export default async function JobsPage({
     const rate = Number(params.minRate);
     if (Number.isFinite(rate)) {
       where.salaryPeriod = "DAY";
-      where.OR = [
-        ...(Array.isArray(where.OR) ? where.OR : []),
-        { salaryMax: { gte: rate } },
-        { salaryMin: { gte: rate } },
-      ];
+      and.push({ OR: [{ salaryMax: { gte: rate } }, { salaryMin: { gte: rate } }] });
     }
   }
   if (params.ir35 && params.ir35 !== "ANY") {
@@ -68,6 +83,8 @@ export default async function JobsPage({
       where.postedAt = { gte: new Date(Date.now() - days * 86_400_000) };
     }
   }
+
+  if (and.length > 0) where.AND = and;
 
   const minScore = params.minScore ? Number(params.minScore) : null;
   if (minScore !== null && Number.isFinite(minScore)) {
@@ -84,12 +101,30 @@ export default async function JobsPage({
       params.sort === "rate"
         ? [{ salaryMax: "desc" }]
         : [{ postedAt: "desc" }, { retrievedAt: "desc" }],
-    take: 60,
+    // With search words, the database narrows by substring and the exact rule
+    // below does the rest, so fetch enough candidates for that to work on.
+    take: terms.length > 0 ? 500 : 60,
   });
+
+  // The database's "contains" matches inside words ("test" in "latest"); this
+  // applies the same word rule the live search used, so the list and the
+  // search agree about what matches.
+  const matching =
+    terms.length > 0
+      ? jobs
+          .filter((job) =>
+            matchesKeywords(
+              { title: job.title, description: effectiveDescription(job) },
+              params.q,
+              keywordMode,
+            ),
+          )
+          .slice(0, 60)
+      : jobs;
 
   // Sorting by match score has to happen after loading, because the score
   // lives on a per-user row rather than on the job itself.
-  const rows = jobs
+  const rows = matching
     .map((job) => ({
       job,
       breakdown: (job.matches[0]?.breakdown ?? null) as MatchBreakdown | null,
@@ -128,22 +163,35 @@ export default async function JobsPage({
       >
         <h2 style={{ fontSize: "1.02rem", margin: 0 }}>
           {rows.length} {rows.length === 1 ? "job" : "jobs"}
+          {params.q ? ` matching "${params.q}"` : ""}
         </h2>
+        {params.q && (
+          <Link href="/jobs" className="hint">
+            Show all stored jobs
+          </Link>
+        )}
       </div>
 
       {rows.length === 0 ? (
         <EmptyState
-          title="No jobs stored yet"
+          title={params.q ? "No stored jobs match that" : "No jobs stored yet"}
           description={
-            configured.length > 0
-              ? "Run a search above to pull live contract adverts into your job database."
-              : "No job source is configured. Add your Adzuna credentials to the server environment to start searching."
+            configured.length === 0
+              ? "No job source is set up yet. Add an Adzuna key under Settings → API keys to start searching."
+              : params.q
+                ? "Try fewer or broader words, or choose \"Any of these words\" and search again."
+                : "Run a search above to pull live contract adverts into your job database."
           }
         />
       ) : (
         <div className="stack" style={{ gap: "0.8rem" }}>
           {rows.map(({ job, breakdown }) => (
-            <JobCard key={job.id} job={job} breakdown={breakdown} />
+            <JobCard
+              key={job.id}
+              job={job}
+              breakdown={breakdown}
+              sourceName={sourceDisplayName(job.source)}
+            />
           ))}
         </div>
       )}

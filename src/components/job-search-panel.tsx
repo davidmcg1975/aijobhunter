@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { fetchJobsAction, type ActionResult } from "@/lib/actions/jobs";
 
@@ -29,6 +30,18 @@ export function JobSearchPanel({
 }) {
   const [state, action] = useActionState(fetchJobsAction, {} as ActionResult);
   const [showFilters, setShowFilters] = useState(false);
+  const router = useRouter();
+
+  // Show what this search found, not the newest jobs from every search ever
+  // run. The list filters on the same words, the same way the search did.
+  useEffect(() => {
+    if (!state.searched) return;
+    // Sorted by match: word rules cannot tell a chemical analyst who tests
+    // samples from a software tester, but the score against the CV can.
+    const params = new URLSearchParams({ q: state.searched.keywords, sort: "match" });
+    if (state.searched.mode !== "all") params.set("mode", state.searched.mode);
+    router.replace(`/jobs?${params}`);
+  }, [state.searched, router]);
 
   return (
     <div className="card" style={{ padding: "1.1rem" }}>

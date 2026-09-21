@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { availableSources, type ResolvedSource } from "./credentials";
 import { fingerprint, findDuplicate } from "./dedupe";
+import { matchesKeywords } from "./relevance";
 import type { JobSearchCriteria, NormalisedJob } from "./types";
 import { JobSourceError } from "./types";
 
@@ -11,6 +12,8 @@ export type IngestSummary = {
   created: number;
   updated: number;
   duplicates: number;
+  /** Returned by the provider but not matching the search words - not stored. */
+  skipped: number;
   error?: string;
 };
 
@@ -36,6 +39,7 @@ export async function ingestFromSource(
       created: 0,
       updated: 0,
       duplicates: 0,
+      skipped: 0,
       error:
         error instanceof JobSourceError
           ? error.message
@@ -43,11 +47,16 @@ export async function ingestFromSource(
     };
   }
 
+  // Providers match loosely; keep only what the user actually asked for.
+  const relevant = jobs.filter((job) =>
+    matchesKeywords(job, criteria.keywords, criteria.keywordMode),
+  );
+
   let created = 0;
   let updated = 0;
   let duplicates = 0;
 
-  for (const job of jobs) {
+  for (const job of relevant) {
     const result = await storeJob(job);
     if (result === "created") created += 1;
     else if (result === "updated") updated += 1;
@@ -60,6 +69,7 @@ export async function ingestFromSource(
     created,
     updated,
     duplicates,
+    skipped: jobs.length - relevant.length,
   };
 }
 
