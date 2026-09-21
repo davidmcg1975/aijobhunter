@@ -1,3 +1,5 @@
+import type { CredentialField, Credentials } from "@/lib/credentials/fields";
+
 /**
  * The common internal job format. Every provider adapter converts its own
  * payload into this shape; nothing outside src/lib/jobsources may know which
@@ -66,10 +68,25 @@ export interface JobSource {
   readonly id: string;
   readonly displayName: string;
 
-  /** False when the provider's credentials are not configured. */
-  isConfigured(): boolean;
+  /**
+   * What a user enters on the settings page to search with their own
+   * account. The settings page is built from this, so it never needs to know
+   * which providers exist.
+   */
+  readonly credentialFields: CredentialField[];
+  /** Where to get those credentials. */
+  readonly credentialUrl: string;
+  /** Anything a user must know beyond the key itself. */
+  readonly credentialNote?: string;
 
-  search(criteria: JobSearchCriteria): Promise<JobSourceResult>;
+  /** The installation's own credentials from the server environment, if set. */
+  environmentCredentials(): Credentials | null;
+
+  /**
+   * Credentials are passed in rather than read here, so the same adapter
+   * serves a user's own key and the installation's. See ./credentials.ts.
+   */
+  search(criteria: JobSearchCriteria, credentials: Credentials): Promise<JobSourceResult>;
 }
 
 export class JobSourceError extends Error {

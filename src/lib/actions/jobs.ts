@@ -7,10 +7,11 @@ import { requireUser } from "@/lib/auth/session";
 import { audit } from "@/lib/security/audit";
 import { RateLimitedError, checkRateLimit } from "@/lib/security/rate-limit";
 import { ingestFromAllSources } from "@/lib/jobsources/ingest";
+import { availableSources } from "@/lib/jobsources/credentials";
 import { analyseJob } from "@/lib/ai/job-analysis";
 import { computeMatch, computeMatches } from "@/lib/matching/service";
 import { AiUnavailableError } from "@/lib/ai/client";
-import { features } from "@/lib/env";
+import { aiAvailableFor } from "@/lib/ai/credentials";
 import type { JobSearchCriteria } from "@/lib/jobsources/types";
 import {
   tidyPastedDescription,
@@ -42,10 +43,9 @@ export async function fetchJobsAction(
 ): Promise<ActionResult> {
   const user = await requireUser();
 
-  if (!features.adzuna()) {
+  if ((await availableSources(user.id)).length === 0) {
     return {
-      error:
-        "No job source is configured. Add ADZUNA_APP_ID and ADZUNA_APP_KEY to your environment.",
+      error: "No job source is set up. Add an Adzuna key under Settings → API keys.",
     };
   }
 
@@ -76,7 +76,7 @@ export async function fetchJobsAction(
     sortBy: "date",
   };
 
-  const summaries = await ingestFromAllSources(criteria);
+  const summaries = await ingestFromAllSources(criteria, user.id);
   const failed = summaries.filter((s) => s.error);
   const created = summaries.reduce((sum, s) => sum + s.created, 0);
   const received = summaries.reduce((sum, s) => sum + s.received, 0);
@@ -107,8 +107,8 @@ export async function fetchJobsAction(
 export async function analyseJobAction(jobId: string): Promise<ActionResult> {
   const user = await requireUser();
 
-  if (!features.ai()) {
-    return { error: "AI features are not configured on this installation." };
+  if (!(await aiAvailableFor(user.id))) {
+    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
   }
 
   try {
@@ -261,7 +261,7 @@ export async function saveFullDescriptionAction(
   });
 
   let analysed = false;
-  if (features.ai()) {
+  if (await aiAvailableFor(user.id)) {
     try {
       await checkRateLimit("aiOperation", user.id);
       await analyseJob(job.id, user.id);

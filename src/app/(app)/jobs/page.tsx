@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { Container, EmptyState, PageHeader } from "@/components/ui";
 import { JobCard } from "@/components/job-card";
 import { JobSearchPanel } from "@/components/job-search-panel";
-import { sourceStatus } from "@/lib/jobsources/registry";
+import { sourceStatusFor } from "@/lib/jobsources/credentials";
 import type { MatchBreakdown } from "@/lib/matching/types";
 import type { Prisma } from "@prisma/client";
 
@@ -100,7 +100,7 @@ export default async function JobsPage({
         : 0,
     );
 
-  const sources = sourceStatus();
+  const sources = await sourceStatusFor(user.id);
   const configured = sources.filter((s) => s.configured);
 
   return (

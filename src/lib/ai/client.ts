@@ -2,26 +2,17 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
+import { resolveAnthropicKey } from "./credentials";
 
 /**
  * The only place the Anthropic API is called. Everything goes through here so
- * that usage, cost and failures are recorded, and so the key exists in exactly
+ * that usage, cost and failures are recorded, and so keys are used in exactly
  * one module - it must never be imported into a client component.
+ *
+ * The key is resolved per call: the user's own when they have saved one in
+ * Settings, otherwise the installation's. A client is cheap to construct, and
+ * caching one per key would keep users' keys in memory for no benefit.
  */
-
-let client: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (client) return client;
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    throw new AiUnavailableError(
-      "AI features are not configured - ANTHROPIC_API_KEY is missing",
-    );
-  }
-  client = new Anthropic({ apiKey: key });
-  return client;
-}
 
 export class AiUnavailableError extends Error {
   constructor(message: string) {
@@ -104,11 +95,20 @@ export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
   const config = env();
   const model = options.model ?? config.AI_MODEL_ANALYSIS;
 
-  await assertWithinBudget(config.AI_MONTHLY_BUDGET_PENCE);
+  const key = await resolveAnthropicKey(options.userId);
+  if (!key) {
+    throw new AiUnavailableError(
+      "AI features are not set up. Add an Anthropic API key under Settings.",
+    );
+  }
+
+  // The installation's budget protects the installation's bill. A user's own
+  // key is billed to them, and capped by them in the Anthropic console.
+  if (!key.ownKey) await assertWithinBudget(config.AI_MONTHLY_BUDGET_PENCE);
 
   const started = Date.now();
   try {
-    const response = await getClient().messages.create({
+    const response = await new Anthropic({ apiKey: key.apiKey }).messages.create({
       model,
       max_tokens: options.maxTokens ?? 4096,
       system: options.system,
@@ -134,6 +134,7 @@ export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
       inputTokens,
       outputTokens,
       succeeded: true,
+      ownKey: key.ownKey,
     });
 
     if (!text) {
@@ -150,10 +151,23 @@ export async function callAi(options: AiCallOptions): Promise<AiCallResult> {
       outputTokens: 0,
       succeeded: false,
       errorCode: errorCodeOf(error),
+      ownKey: key.ownKey,
     });
 
     if (error instanceof AiResponseError || error instanceof AiUnavailableError) {
       throw error;
+    }
+
+    // Only a user's own key is theirs to fix; a rejected installation key is
+    // an operator problem and gets the generic message below.
+    if (
+      key.ownKey &&
+      error instanceof Anthropic.APIError &&
+      (error.status === 401 || error.status === 403)
+    ) {
+      throw new AiUnavailableError(
+        "Anthropic rejected your API key. Check it under Settings → API keys.",
+      );
     }
 
     console.error("[ai] call failed", {
@@ -183,6 +197,7 @@ async function recordUsage(params: {
   outputTokens: number;
   succeeded: boolean;
   errorCode?: string;
+  ownKey: boolean;
 }): Promise<void> {
   await prisma.aiUsage
     .create({
@@ -199,6 +214,7 @@ async function recordUsage(params: {
         ),
         succeeded: params.succeeded,
         errorCode: params.errorCode,
+        ownKey: params.ownKey,
       },
     })
     .catch(() => {});
@@ -211,7 +227,7 @@ async function assertWithinBudget(budgetPence: number): Promise<void> {
   monthStart.setUTCHours(0, 0, 0, 0);
 
   const result = await prisma.aiUsage.aggregate({
-    where: { createdAt: { gte: monthStart } },
+    where: { createdAt: { gte: monthStart }, ownKey: false },
     _sum: { costPence: true },
   });
 

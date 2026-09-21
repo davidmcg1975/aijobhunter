@@ -8,6 +8,7 @@ import {
   type JobSourceResult,
   type NormalisedJob,
 } from "./types";
+import type { Credentials } from "@/lib/credentials/fields";
 import {
   detectIr35,
   detectRemote,
@@ -44,20 +45,32 @@ type AdzunaResponse = {
 /**
  * Adzuna adapter.
  *
- * Credentials are read from the server environment only and are never
- * returned to callers - see docs/security.md and docs/adzuna.md.
+ * Credentials come from the caller - a user's own, or the installation's -
+ * and are never returned to callers or logged. See docs/security.md and
+ * docs/adzuna.md.
  */
 export class AdzunaSource implements JobSource {
   readonly id = "adzuna";
   readonly displayName = "Adzuna";
 
-  isConfigured(): boolean {
-    return Boolean(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY);
+  readonly credentialFields = [
+    { name: "appId", label: "Adzuna App ID", pattern: /^[A-Za-z0-9]+$/ },
+    { name: "appKey", label: "Adzuna App Key", pattern: /^[A-Za-z0-9]+$/ },
+  ];
+  readonly credentialUrl = "https://developer.adzuna.com/";
+
+  environmentCredentials(): Credentials | null {
+    const appId = process.env.ADZUNA_APP_ID;
+    const appKey = process.env.ADZUNA_APP_KEY;
+    return appId && appKey ? { appId, appKey } : null;
   }
 
-  async search(criteria: JobSearchCriteria): Promise<JobSourceResult> {
+  async search(
+    criteria: JobSearchCriteria,
+    credentials: Credentials,
+  ): Promise<JobSourceResult> {
     const config = env();
-    if (!this.isConfigured()) {
+    if (!credentials.appId || !credentials.appKey) {
       throw new JobSourceError(
         this.id,
         "NOT_CONFIGURED",
@@ -69,8 +82,8 @@ export class AdzunaSource implements JobSource {
 
     const page = Math.max(1, criteria.page ?? 1);
     const params = new URLSearchParams({
-      app_id: config.ADZUNA_APP_ID!,
-      app_key: config.ADZUNA_APP_KEY!,
+      app_id: credentials.appId,
+      app_key: credentials.appKey,
       results_per_page: String(Math.min(criteria.perPage ?? 20, 50)),
       "content-type": "application/json",
     });

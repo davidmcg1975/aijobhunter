@@ -175,7 +175,12 @@ All external job providers implement the `JobSource` interface in
 - Never put provider-specific logic anywhere outside `src/lib/jobsources/`.
 - Nothing outside that directory may branch on `source === "adzuna"`.
 - Adding a provider means adding one adapter and one registry line.
-- Provider credentials live in server environment variables only.
+- Provider credentials are either the installation's (server environment
+  variables) or a user's own (encrypted in `ApiCredential`, entered under
+  Settings → API keys). Adapters never read `process.env` for a key: they
+  declare `credentialFields` and receive credentials in `search()`, resolved
+  by `resolveSource()` in `credentials.ts`. A user's key is only ever used
+  for that user's own searches; background runs get the installation's.
 - Respect provider rate limits in the adapter itself, not at the call site.
 - **Never read `Job.description` directly.** Use `effectiveDescription()`
   from `src/lib/jobsources/description.ts`, which prefers the full advert a
@@ -185,6 +190,19 @@ All external job providers implement the `JobSource` interface in
 
 See `docs/adzuna.md` for the licensing position, which is a real constraint, not
 a formality.
+
+## Users' own API keys
+
+`src/lib/credentials/store.ts` is the only code that reads or writes
+`ApiCredential`. Values are AES-256-GCM encrypted under a key derived from
+`AUTH_SECRET`, with `userId:provider` as authenticated data so a row copied to
+another user cannot be decrypted. A decrypted key never goes to the browser -
+the settings page gets the last four characters and nothing else - and is
+never logged or audited (audit records the provider name only).
+
+`callAi()` resolves the Anthropic key per call. Spend on a user's own key is
+recorded with `ownKey: true` and is **not** counted against
+`AI_MONTHLY_BUDGET_PENCE`, which protects the installation's bill only.
 
 ## Access control
 

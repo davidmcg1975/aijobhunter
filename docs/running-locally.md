@@ -28,6 +28,10 @@ cd ai-job-hunter
 
 ## 3. Get your API keys
 
+You enter these in the app itself, under **Settings → API keys**, after you
+have signed in - there is no need to put them in a file. (Putting them in
+`.env` instead still works, and makes them the default for every account.)
+
 Use **your own** keys. They are tied to the account holder's usage limits and
 billing, and should not be shared between people.
 
@@ -69,9 +73,11 @@ Open `.env` in any text editor and set:
 | --- | --- |
 | `AUTH_SECRET` | The value you just generated |
 | `ALLOWED_SIGNUP_EMAILS` | Your own email address |
-| `ANTHROPIC_API_KEY` | Your Anthropic key |
-| `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` | Your Adzuna keys |
-| `CAREERJET_API_KEY` | Optional |
+
+That is all the file needs. API keys go in the app (step 6).
+
+Keep `AUTH_SECRET` once it is set: saved API keys are encrypted with it, and
+changing it means entering them again.
 
 **Leave `DATABASE_URL` as it is.** The Docker setup ignores it and uses its own
 database container, whatever the file says.
@@ -98,15 +104,17 @@ after signing in, try one of them.
 
 ## 6. First steps in the app
 
-1. **My CV → Upload a CV** (PDF or Word). The AI extracts your roles and
+1. **Settings → API keys**: paste in your Anthropic and Adzuna keys (and
+   Careerjet, if you have one). They are encrypted before they are stored.
+2. **My CV → Upload a CV** (PDF or Word). The AI extracts your roles and
    skills. **Review what it found before confirming** — it is a draft, and
    everything the app writes for you later is checked against what you confirm
    here.
-2. **Jobs → search** for something like `test lead` or `QA automation`.
-3. Open a job to see the match score and exactly how it was worked out. Adverts
+3. **Jobs → search** for something like `test lead` or `QA automation`.
+4. Open a job to see the match score and exactly how it was worked out. Adverts
    from job boards are cut short; paste the full advert from the original
    listing into the job page to get a far more accurate score.
-4. **Analyse with AI**, then **Tailor your CV** or **Cover letter**. Anything the AI
+5. **Analyse with AI**, then **Tailor your CV** or **Cover letter**. Anything the AI
    writes that is not supported by your CV is flagged before you use it.
 
 ## Day to day
@@ -171,8 +179,11 @@ anything; ask before forcing it.
 in `ALLOWED_SIGNUP_EMAILS`. Add it, then
 `docker compose -f docker-compose.local.yml up -d` to pick up the change.
 
-**Job search returns nothing / an error about a source** — check the keys in
-`.env`. For Careerjet, check your current IP is registered with them.
+**"Anthropic rejected your API key"** — it was mistyped or has been revoked.
+Replace it under Settings → API keys.
+
+**Job search returns nothing / an error about a source** — check the keys
+under Settings → API keys. For Careerjet, check your current IP is registered with them.
 
 **AI features stop with a budget message** — raise
 `AI_MONTHLY_BUDGET_PENCE` in `.env` (it is in pence: `50000` is £500).

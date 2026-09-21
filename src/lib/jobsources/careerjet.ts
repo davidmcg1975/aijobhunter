@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
+import type { Credentials } from "@/lib/credentials/fields";
 import {
   JobSourceError,
   type ContractType,
@@ -66,12 +67,25 @@ export class CareerjetSource implements JobSource {
   readonly id = "careerjet";
   readonly displayName = "Careerjet";
 
-  isConfigured(): boolean {
-    return Boolean(process.env.CAREERJET_API_KEY);
+  readonly credentialFields = [
+    { name: "apiKey", label: "Careerjet API key", pattern: /^[A-Za-z0-9]+$/ },
+  ];
+  readonly credentialUrl = "https://www.careerjet.com/partners/api/";
+  readonly credentialNote =
+    "Careerjet only answers requests from IP addresses registered in your " +
+    "publisher account. Add the public IP address of the machine this app " +
+    "runs on, or searches will be refused.";
+
+  environmentCredentials(): Credentials | null {
+    const apiKey = process.env.CAREERJET_API_KEY;
+    return apiKey ? { apiKey } : null;
   }
 
-  async search(criteria: JobSearchCriteria): Promise<JobSourceResult> {
-    const apiKey = process.env.CAREERJET_API_KEY;
+  async search(
+    criteria: JobSearchCriteria,
+    credentials: Credentials,
+  ): Promise<JobSourceResult> {
+    const apiKey = credentials.apiKey;
     if (!apiKey) {
       throw new JobSourceError(
         this.id,

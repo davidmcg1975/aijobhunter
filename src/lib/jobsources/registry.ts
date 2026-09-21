@@ -21,14 +21,15 @@ export function allSources(): JobSource[] {
   return SOURCES;
 }
 
-export function configuredSources(): JobSource[] {
-  return SOURCES.filter((s) => s.isConfigured());
-}
-
 export function getSource(id: string): JobSource | undefined {
   return SOURCES.find((s) => s.id === id);
 }
 
+/**
+ * The installation's own configuration only - for the admin page. What a
+ * particular user can search, including with their own keys, is
+ * sourceStatusFor() in ./credentials.ts.
+ */
 export function sourceStatus(): Array<{
   id: string;
   displayName: string;
@@ -37,6 +38,6 @@ export function sourceStatus(): Array<{
   return SOURCES.map((s) => ({
     id: s.id,
     displayName: s.displayName,
-    configured: s.isConfigured(),
+    configured: s.environmentCredentials() !== null,
   }));
 }

@@ -20,6 +20,7 @@ export const RULES = {
   cvUpload: { windowSeconds: 3600, max: 20 },
   aiOperation: { windowSeconds: 3600, max: 60 },
   jobSearch: { windowSeconds: 60, max: 30 },
+  credentials: { windowSeconds: 3600, max: 30 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RuleName = keyof typeof RULES;

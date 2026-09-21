@@ -13,7 +13,7 @@ import {
   extractCvStructure,
   type ExtractedCv,
 } from "@/lib/ai/cv-extraction";
-import { features } from "@/lib/env";
+import { aiAvailableFor } from "@/lib/ai/credentials";
 
 export type CvUploadState = {
   error?: string;
@@ -99,11 +99,11 @@ export async function uploadCvAction(
 
   revalidatePath("/cv");
 
-  if (!features.ai()) {
+  if (!(await aiAvailableFor(user.id))) {
     return {
       cvId: cv.id,
       success:
-        "CV uploaded and text extracted. AI structuring is not configured, so fill in your profile by hand.",
+        "CV uploaded and text extracted. AI structuring is not set up - add an Anthropic API key under Settings → API keys, or fill in your profile by hand.",
     };
   }
 

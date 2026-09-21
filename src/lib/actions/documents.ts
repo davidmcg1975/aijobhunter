@@ -14,7 +14,7 @@ import {
   type RecruiterChannel,
 } from "@/lib/ai/cover-letter";
 import type { GroundingReport } from "@/lib/ai/grounding";
-import { features } from "@/lib/env";
+import { aiAvailableFor } from "@/lib/ai/credentials";
 
 export type TailorState = {
   error?: string;
@@ -29,8 +29,8 @@ export async function tailorCvAction(
   const jobId = String(formData.get("jobId") ?? "");
   if (!jobId) return { error: "No job specified." };
 
-  if (!features.ai()) {
-    return { error: "AI features are not configured on this installation." };
+  if (!(await aiAvailableFor(user.id))) {
+    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
   }
 
   try {
@@ -72,8 +72,8 @@ export async function generateCoverLetterAction(
 
   if (!jobId) return { error: "No job specified." };
   if (!COVER_LETTER_TONES.includes(tone)) return { error: "Unknown tone." };
-  if (!features.ai()) {
-    return { error: "AI features are not configured on this installation." };
+  if (!(await aiAvailableFor(user.id))) {
+    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
   }
 
   try {
@@ -106,8 +106,8 @@ export async function draftRecruiterMessageAction(
 
   if (!jobId) return { error: "No job specified." };
   if (!RECRUITER_CHANNELS.includes(channel)) return { error: "Unknown channel." };
-  if (!features.ai()) {
-    return { error: "AI features are not configured on this installation." };
+  if (!(await aiAvailableFor(user.id))) {
+    return { error: "AI features are not set up. Add an Anthropic API key under Settings → API keys." };
   }
 
   try {

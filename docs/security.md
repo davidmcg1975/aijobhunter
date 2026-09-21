@@ -150,6 +150,35 @@ JavaScript.
 `src/lib/env.ts` validates the environment with Zod at first use and fails
 loudly on a misconfiguration rather than behaving strangely later.
 
+### Users' own API keys
+
+Settings → API keys lets each user use their own Anthropic, Adzuna, Reed or
+Careerjet account instead of the installation's.
+
+- **Encrypted at rest** with AES-256-GCM (`src/lib/security/encryption.ts`).
+  The key is derived from `AUTH_SECRET` with HKDF, so there is no second
+  secret to configure or lose. The user id and provider are bound in as
+  authenticated data: a ciphertext moved to another user's row, or another
+  provider's, fails to decrypt rather than working.
+- **Write-only from the browser.** Once saved, a key is never sent back. The
+  page shows its last four characters, and only for keys long enough that
+  four characters reveal nothing useful.
+- **Never logged.** The audit log records that a key was saved or removed and
+  for which provider - not the value, and not the hint.
+- **Used only for its owner.** Searches and AI calls a user makes use their
+  key; background jobs use only the installation's.
+- **Rotating `AUTH_SECRET` makes saved keys unreadable.** That is the price of
+  not having a separate encryption key. The app then falls back to the
+  installation's key and the settings page asks the user to enter theirs
+  again; nothing fails.
+- **Budgets.** A user's own Anthropic spend is not counted against
+  `AI_MONTHLY_BUDGET_PENCE` - it is their bill, capped in their Anthropic
+  console. The Adzuna daily call counter is still installation-wide,
+  whichever key a call used, so it can stop a user's own key early; it never
+  lets one overspend.
+- Deleting an account deletes its keys (cascade). The data export does not
+  include them.
+
 ## Logging
 
 `audit()` (`src/lib/security/audit.ts`) writes an append-only log of

@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { configuredSources, getSource } from "./registry";
+import { availableSources, type ResolvedSource } from "./credentials";
 import { fingerprint, findDuplicate } from "./dedupe";
 import type { JobSearchCriteria, NormalisedJob } from "./types";
 import { JobSourceError } from "./types";
@@ -21,24 +21,14 @@ export type IngestSummary = {
  * to trigger the fetch, and carry no userId.
  */
 export async function ingestFromSource(
-  sourceId: string,
+  { source, credentials }: ResolvedSource,
   criteria: JobSearchCriteria,
 ): Promise<IngestSummary> {
-  const source = getSource(sourceId);
-  if (!source) {
-    return {
-      source: sourceId,
-      received: 0,
-      created: 0,
-      updated: 0,
-      duplicates: 0,
-      error: `Unknown source: ${sourceId}`,
-    };
-  }
+  const sourceId = source.id;
 
   let jobs: NormalisedJob[];
   try {
-    ({ jobs } = await source.search(criteria));
+    ({ jobs } = await source.search(criteria, credentials));
   } catch (error) {
     return {
       source: sourceId,
@@ -73,15 +63,21 @@ export async function ingestFromSource(
   };
 }
 
+/**
+ * `userId` selects whose keys are used: that user's own where saved, the
+ * installation's otherwise. Omit it for background runs, which must only ever
+ * spend the installation's allowance.
+ */
 export async function ingestFromAllSources(
   criteria: JobSearchCriteria,
+  userId?: string | null,
 ): Promise<IngestSummary[]> {
-  const sources = configuredSources();
+  const sources = await availableSources(userId);
   const summaries: IngestSummary[] = [];
   // Sequential on purpose: providers have per-minute allowances and running
   // them in parallel is the quickest way to get rate limited.
-  for (const source of sources) {
-    summaries.push(await ingestFromSource(source.id, criteria));
+  for (const resolved of sources) {
+    summaries.push(await ingestFromSource(resolved, criteria));
   }
   return summaries;
 }

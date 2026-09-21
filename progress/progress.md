@@ -60,6 +60,17 @@ to 2,244-char advert took the named requirements from 9 to 20, responsibilities
 matched from 67% to 94%, let the industry be detected at all, and moved the
 score from 80% to 85%. Details and the design note in `docs/adzuna.md`.
 
+### Users' own API keys (21 September 2026)
+
+Settings → API keys lets each user enter their own Anthropic, Adzuna, Reed
+and Careerjet credentials, so someone running their own copy never has to
+edit `.env` beyond `AUTH_SECRET` and the allowlist. Encrypted at rest, never
+sent back to the browser, used only for their owner, and falling back to the
+installation's keys when not set. Job source adapters now receive credentials
+rather than reading the environment. Design and trade-offs in
+`docs/security.md`. Unit tested (encryption, validation, every provider's
+key shape); schema applied to Neon.
+
 ### Now on hosted PostgreSQL (20 September 2026)
 
 Moved off the embedded database to **Neon, eu-west-2 (London)** - London

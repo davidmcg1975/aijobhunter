@@ -7,6 +7,7 @@ import {
   type JobSourceResult,
   type NormalisedJob,
 } from "./types";
+import type { Credentials } from "@/lib/credentials/fields";
 import {
   detectIr35,
   detectRemote,
@@ -46,19 +47,33 @@ type ReedResponse = {
  * docs/job-sources.md.
  *
  * Authentication is HTTP Basic with the API key as the username and an empty
- * password. The key is read from the server environment only and never
- * reaches the browser.
+ * password. The key comes from the caller - a user's own, or the
+ * installation's - and never reaches the browser.
  */
 export class ReedSource implements JobSource {
   readonly id = "reed";
   readonly displayName = "Reed";
 
-  isConfigured(): boolean {
-    return Boolean(process.env.REED_API_KEY);
+  readonly credentialFields = [
+    {
+      name: "apiKey",
+      label: "Reed API key",
+      pattern: /^[0-9a-f-]+$/i,
+      patternMessage: "A Reed API key is letters, numbers and dashes.",
+    },
+  ];
+  readonly credentialUrl = "https://www.reed.co.uk/developers/jobseeker";
+
+  environmentCredentials(): Credentials | null {
+    const apiKey = process.env.REED_API_KEY;
+    return apiKey ? { apiKey } : null;
   }
 
-  async search(criteria: JobSearchCriteria): Promise<JobSourceResult> {
-    const apiKey = process.env.REED_API_KEY;
+  async search(
+    criteria: JobSearchCriteria,
+    credentials: Credentials,
+  ): Promise<JobSourceResult> {
+    const apiKey = credentials.apiKey;
     if (!apiKey) {
       throw new JobSourceError(
         this.id,

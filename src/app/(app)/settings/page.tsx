@@ -7,7 +7,11 @@ import {
   EmailVerification,
   RescoreJobs,
 } from "@/components/settings-panels";
-import { sourceStatus } from "@/lib/jobsources/registry";
+import { ApiKeysPanel, type ApiKeyProviderView } from "@/components/api-keys-panel";
+import { sourceStatusFor } from "@/lib/jobsources/credentials";
+import { aiAvailableFor } from "@/lib/ai/credentials";
+import { credentialProviders } from "@/lib/credentials/providers";
+import { listUserCredentialStatus } from "@/lib/credentials/store";
 import { features } from "@/lib/env";
 
 export const metadata = { title: "Settings" };
@@ -15,7 +19,26 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const sources = sourceStatus();
+  const [sources, aiAvailable, savedKeys] = await Promise.all([
+    sourceStatusFor(user.id),
+    aiAvailableFor(user.id),
+    listUserCredentialStatus(user.id),
+  ]);
+
+  // Only what the browser needs to render the form. Field patterns stay on
+  // the server, where validation happens, and no key value is ever included.
+  const keyProviders: ApiKeyProviderView[] = credentialProviders().map((provider) => {
+    const saved = savedKeys.find((k) => k.provider === provider.id);
+    return {
+      id: provider.id,
+      displayName: provider.displayName,
+      url: provider.url,
+      note: provider.note,
+      fields: provider.fields.map(({ name, label }) => ({ name, label })),
+      installationConfigured: provider.installationConfigured,
+      saved: saved ? { hint: saved.hint, unreadable: saved.unreadable } : null,
+    };
+  });
 
   return (
     <Container width={720}>
@@ -24,6 +47,7 @@ export default async function SettingsPage() {
       <EmailVerification verified={Boolean(user.emailVerified)} />
       <RescoreJobs />
       <ChangePassword />
+      <ApiKeysPanel providers={keyProviders} />
 
       <section className="card" style={{ padding: "1.2rem", marginBottom: "1.2rem" }}>
         <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.05rem" }}>
@@ -42,7 +66,7 @@ export default async function SettingsPage() {
           ))}
           <li>
             AI features:{" "}
-            {features.ai() ? (
+            {aiAvailable ? (
               <span style={{ color: "var(--success)" }}>connected</span>
             ) : (
               <span className="subtle">not configured</span>

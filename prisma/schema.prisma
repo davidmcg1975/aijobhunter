@@ -47,8 +47,28 @@ model User {
   aiUsage       AiUsage[]
   notifications Notification[]
   sessions      Session[]
+  credentials   ApiCredential[]
 
   @@index([email])
+}
+
+/// A user's own key for an external service (Anthropic, a job board).
+/// `ciphertext` is AES-256-GCM under a key derived from AUTH_SECRET, bound to
+/// this userId and provider - see src/lib/security/encryption.ts. The value is
+/// never returned to the browser; `hint` (the last four characters) is all
+/// that is ever shown.
+model ApiCredential {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String
+  ciphertext String
+  hint       String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
 }
 
 enum AuthTokenKind {
@@ -553,6 +573,9 @@ model AiUsage {
   costPence    Int      @default(0)
   succeeded    Boolean  @default(true)
   errorCode    String?
+  /// Made with the user's own Anthropic key: billed to them, so it does not
+  /// count against the installation's AI_MONTHLY_BUDGET_PENCE.
+  ownKey       Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)

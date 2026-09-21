@@ -146,7 +146,7 @@ export function JobSearchPanel({
       <p className="hint" style={{ marginTop: "0.7rem" }}>
         {sourcesConfigured
           ? `Searches ${sourceNames.join(", ")} and stores the results. "All of these words" is the accurate default; "any" widens a search that returns nothing, but pulls in unrelated roles that merely share a word. Job boards return only a short extract of each advert, so always open the original before applying.`
-          : "No job source configured - add Adzuna credentials to the server environment."}
+          : "No job source is set up yet - add an Adzuna key under Settings → API keys."}
       </p>
 
       <button
