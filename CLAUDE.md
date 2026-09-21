@@ -62,7 +62,7 @@ npm test             # vitest run
 npm run db:local     # create the schema in the embedded database
 npm run db:push      # apply the schema to a real PostgreSQL server
 npm run db:migrate   # create a migration (preferred once deployed)
-npm run db:seed      # demo user + example jobs
+npm run db:seed      # demo user (-- --examples adds two made-up jobs)
 npm run jobs:fetch   # fetch and analyse jobs from the command line
 ```
 

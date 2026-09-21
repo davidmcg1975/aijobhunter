@@ -3,9 +3,14 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db";
 
 /**
- * Development seed. Creates a demo account with a filled-in profile and a
- * couple of hand-written job adverts so the matching and tailoring flows can
- * be exercised without an Adzuna key.
+ * Development seed. Creates a demo account with a filled-in profile.
+ *
+ * Two hand-written job adverts are added only with `--examples`
+ * (`npm run db:seed -- --examples`), for exercising matching without an
+ * Adzuna key. They are opt-in because they are indistinguishable from real
+ * adverts in the jobs list once a database also holds live results - which is
+ * exactly what happened. Their titles are marked "[Example]" for the same
+ * reason.
  *
  * Refuses to run against a production database.
  */
@@ -15,6 +20,7 @@ if (process.env.NODE_ENV === "production") {
 
 const DEMO_EMAIL = "demo@example.com";
 const DEMO_PASSWORD = "correct-horse-battery-staple";
+const WITH_EXAMPLES = process.argv.includes("--examples");
 
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
@@ -113,7 +119,7 @@ async function main() {
     {
       source: "seed",
       sourceJobId: "seed-1",
-      title: "Senior Test Analyst",
+      title: "[Example] Senior Test Analyst",
       company: "Aldgate Capital",
       location: "London",
       description: `Senior Test Analyst required for a 6 month contract with a leading investment bank.
@@ -148,7 +154,7 @@ You will own the test strategy for a regulatory reporting programme, lead a smal
     {
       source: "seed",
       sourceJobId: "seed-2",
-      title: "AI Test Engineer",
+      title: "[Example] AI Test Engineer",
       company: "Helix AI",
       location: "Remote",
       description: `AI Test Engineer needed for a 12 month contract, fully remote.
@@ -181,7 +187,7 @@ Desirable:
     },
   ];
 
-  for (const job of jobs) {
+  for (const job of WITH_EXAMPLES ? jobs : []) {
     await prisma.job.upsert({
       where: {
         source_sourceJobId: {
@@ -199,7 +205,11 @@ Desirable:
     email:    ${DEMO_EMAIL}
     password: ${DEMO_PASSWORD}
 
-  ${jobs.length} example jobs created. Open Jobs to score them against the demo profile.`);
+  ${
+    WITH_EXAMPLES
+      ? `${jobs.length} example jobs created. Open Jobs to score them against the demo profile.`
+      : "No example jobs added (use --examples for two made-up adverts)."
+  }`);
 }
 
 main()

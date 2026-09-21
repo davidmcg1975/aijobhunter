@@ -46,7 +46,7 @@ database takes about two minutes and is what this runs on.
 npm install
 cp .env.example .env     # then set DATABASE_URL and AUTH_SECRET
 npm run db:push          # create the schema
-npm run db:seed          # demo account + two example jobs
+npm run db:seed          # demo account (add -- --examples for two made-up jobs)
 npm run dev
 ```
 
@@ -63,8 +63,9 @@ email:    demo@example.com
 password: correct-horse-battery-staple
 ```
 
-That works with no API keys at all — the seeded jobs exercise matching and the
-score explanation immediately.
+To try matching with no API keys at all, seed with `npm run db:seed -- --examples`
+for two made-up adverts (titled "[Example]"). Leave them out of any database you
+use for a real search - they look like real jobs in the list.
 
 You will want to set `AUTH_SECRET` in `.env` before anything real:
 
