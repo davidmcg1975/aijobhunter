@@ -230,6 +230,14 @@ a green test suite said nothing about whether a single AI call would succeed.
 - Cover letters and recruiter messages (the same verified code path as
   tailoring, but not individually run)
 - The application tracker
+- **The Docker images themselves**, though the first real attempt (19 October
+  2026, by the person it was built for) found the first bug: the Dockerfile
+  copied `/app/public`, which existed nowhere - not in git, not on the
+  development machine - and Docker fails a build when a COPY source is
+  missing. Fixed with `public/.gitkeep` and a `mkdir -p` in the builder. The
+  local clean-build check had hidden it by discarding copy errors; there is
+  now a fresh-clone check (clone, `npm ci`, build, assert every COPY source
+  exists) which passes. The rest of the image build is still unproven.
 - **The Docker images themselves.** `docker-compose.local.yml` (app + its own
   PostgreSQL, see `docs/running-locally.md`) and `docker-compose.yml` (server,
   with Caddy) have never been built: there was no Docker on the development
