@@ -55,13 +55,16 @@ export function MatchExplanation({ breakdown }: { breakdown: MatchBreakdown }) {
         </div>
       )}
 
-      {breakdown.capReason && (
+      {/* Both of these explain the same shortfall in a different way, and the
+          cap refers to a percentage that is not shown when the score is too
+          thin to state. One message is enough. */}
+      {!underEvidenced && breakdown.capReason && (
         <div className="alert alert-warning" style={{ marginBottom: "0.9rem" }}>
           <strong>Held at {breakdown.cappedAt}%.</strong> {breakdown.capReason}
         </div>
       )}
 
-      {breakdown.usedFallbackAnalysis && (
+      {!underEvidenced && breakdown.usedFallbackAnalysis && (
         <div className="alert alert-warning" style={{ marginBottom: "0.9rem" }}>
           This job has not been analysed by AI yet, so the score is based on
           reading the advert text directly. Analyse it for a better score.
