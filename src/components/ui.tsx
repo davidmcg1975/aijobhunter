@@ -81,11 +81,31 @@ export function Stat({
 export function MatchScore({
   score,
   size = "md",
+  underEvidenced = false,
 }: {
   score: number;
   size?: "sm" | "md" | "lg";
+  /** Too little of the advert could be assessed for the number to mean anything. */
+  underEvidenced?: boolean;
 }) {
   const fontSize = size === "lg" ? "1.6rem" : size === "sm" ? "0.85rem" : "1.05rem";
+
+  if (underEvidenced) {
+    return (
+      <span
+        className="muted"
+        style={{
+          fontWeight: 600,
+          fontSize: size === "lg" ? "1.05rem" : "0.85rem",
+          whiteSpace: "nowrap",
+        }}
+        title="Analyse this advert, or paste its full text, for a real score."
+      >
+        Not enough to score
+      </span>
+    );
+  }
+
   return (
     <span
       style={{

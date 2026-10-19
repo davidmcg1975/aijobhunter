@@ -5,6 +5,7 @@ import { JobCard } from "@/components/job-card";
 import { JobSearchPanel } from "@/components/job-search-panel";
 import { sourceStatusFor } from "@/lib/jobsources/credentials";
 import { keywordTerms, matchesKeywords, type KeywordMode } from "@/lib/jobsources/relevance";
+import { matchRank } from "@/lib/matching/evidence";
 import { effectiveDescription } from "@/lib/jobsources/description";
 import { sourceDisplayName } from "@/lib/jobsources/registry";
 import Link from "next/link";
@@ -130,9 +131,7 @@ export default async function JobsPage({
       breakdown: (job.matches[0]?.breakdown ?? null) as MatchBreakdown | null,
     }))
     .sort((a, b) =>
-      params.sort === "match"
-        ? (b.breakdown?.score ?? -1) - (a.breakdown?.score ?? -1)
-        : 0,
+      params.sort === "match" ? matchRank(b.breakdown) - matchRank(a.breakdown) : 0,
     );
 
   const sources = await sourceStatusFor(user.id);

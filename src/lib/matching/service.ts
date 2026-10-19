@@ -1,4 +1,5 @@
 import "server-only";
+import { isUnderEvidenced } from "./evidence";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { loadUserContext, type UserContext } from "@/lib/ai/profile-context";
@@ -127,7 +128,7 @@ export async function computeMatches(params: {
 }
 
 export async function getTopMatches(userId: string, limit = 5) {
-  return prisma.jobMatch.findMany({
+  const rows = await prisma.jobMatch.findMany({
     where: {
       userId,
       job: { canonicalId: null, expiredAt: null },
@@ -143,8 +144,14 @@ export async function getTopMatches(userId: string, limit = 5) {
     },
     include: { job: { include: { analysis: true } } },
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-    take: limit,
+    // Over-fetched because jobs whose score could not really be assessed are
+    // dropped below, and they would otherwise fill the dashboard.
+    take: limit * 6,
   });
+
+  return rows
+    .filter((row) => !isUnderEvidenced(row.breakdown as unknown as MatchBreakdown))
+    .slice(0, limit);
 }
 
 export async function getDashboardStats(userId: string) {

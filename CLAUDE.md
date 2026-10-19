@@ -179,6 +179,16 @@ tester, almost entirely on length of service. So when `technicalSkills` is
 indeterminate the score is capped at `UNASSESSED_SKILLS_CAP` (60) and
 `capReason` explains why. Do not remove that cap to make scores look better.
 
+**A thin score is not shown as a number at all.** Redistribution means a job
+assessed on one 20%-weight dimension still produces a confident "60% match" -
+a postal delivery driver scored on length of experience alone. When less than
+`MIN_ASSESSED_WEIGHT` (50) of the weight could be assessed,
+`isUnderEvidenced()` in `src/lib/matching/evidence.ts` is true and the UI
+shows "Not enough to score" with the reason, instead of a percentage. Such
+jobs also rank below every real score (`matchRank()`) and are kept off the
+dashboard. The arithmetic is unchanged; only the presentation of an
+unsupportable number is. Every place that displays a score must apply this.
+
 ## Job source rules
 
 All external job providers implement the `JobSource` interface in

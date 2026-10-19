@@ -4,6 +4,7 @@ import {
   RECOMMENDATION_LABELS,
   type MatchBreakdown,
 } from "@/lib/matching/types";
+import { isUnderEvidenced, UNDER_EVIDENCED_REASON } from "@/lib/matching/evidence";
 
 /**
  * The score is never shown without this. Section 13 of the spec: a percentage
@@ -11,6 +12,7 @@ import {
  * when the AI has got it wrong.
  */
 export function MatchExplanation({ breakdown }: { breakdown: MatchBreakdown }) {
+  const underEvidenced = isUnderEvidenced(breakdown);
   const scored = breakdown.dimensions.filter((d) => !d.indeterminate);
   const skipped = breakdown.dimensions.filter((d) => d.indeterminate);
 
@@ -29,12 +31,29 @@ export function MatchExplanation({ breakdown }: { breakdown: MatchBreakdown }) {
         <div>
           <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Why this score?</h2>
           <p className="muted" style={{ margin: "0.2rem 0 0", fontSize: "0.87rem" }}>
-            {RECOMMENDATION_LABELS[breakdown.recommendation]} ·{" "}
-            {RECOMMENDATION_ACTIONS[breakdown.recommendation]}
+            {underEvidenced
+              ? "Not enough of this advert could be checked to score it"
+              : `${RECOMMENDATION_LABELS[breakdown.recommendation]} · ${
+                  RECOMMENDATION_ACTIONS[breakdown.recommendation]
+                }`}
           </p>
         </div>
-        <MatchScore score={breakdown.score} size="lg" />
+        <MatchScore
+          score={breakdown.score}
+          size="lg"
+          underEvidenced={underEvidenced}
+        />
       </div>
+
+      {underEvidenced && (
+        <div className="alert alert-warning" style={{ marginBottom: "0.9rem" }}>
+          <strong>
+            Only {breakdown.effectiveWeightTotal}% of the scoring could be
+            assessed.
+          </strong>{" "}
+          {UNDER_EVIDENCED_REASON}
+        </div>
+      )}
 
       {breakdown.capReason && (
         <div className="alert alert-warning" style={{ marginBottom: "0.9rem" }}>

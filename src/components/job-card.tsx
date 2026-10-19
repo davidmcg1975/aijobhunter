@@ -7,6 +7,7 @@ import {
   formatRemote,
 } from "@/lib/format";
 import type { MatchBreakdown } from "@/lib/matching/types";
+import { isUnderEvidenced } from "@/lib/matching/evidence";
 
 type JobSummary = {
   id: string;
@@ -61,7 +62,12 @@ export function JobCard({
             </div>
           )}
         </div>
-        {breakdown && <MatchScore score={breakdown.score} />}
+        {breakdown && (
+          <MatchScore
+            score={breakdown.score}
+            underEvidenced={isUnderEvidenced(breakdown)}
+          />
+        )}
       </div>
 
       <div

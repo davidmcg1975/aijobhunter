@@ -71,6 +71,22 @@ rather than reading the environment. Design and trade-offs in
 `docs/security.md`. Unit tested (encryption, validation, every provider's
 key shape); schema applied to Neon.
 
+### "Why is everything 60%?" (19 October 2026)
+
+The first user of a fresh copy saw receptionist, labourer and customer
+service adverts all at "60% match". Cause: dimensions that cannot be assessed
+have their weight redistributed, so a job assessed only on length of
+experience (20% of the weight) still produced a confident number. Across 392
+stored matches the split was clean - below half the weight assessed, scores
+bunched in a meaningless 48-60 band; at half or more they spread 12-94 and
+discriminated properly. Those are also exactly the matches where technical
+skills could be assessed.
+
+Such scores now show "Not enough to score" with the reason and the fix
+(analyse the advert, or paste its full text), rank below every real score,
+and are kept off the dashboard. Scoring arithmetic is untouched. See
+`isUnderEvidenced()` in `src/lib/matching/evidence.ts`.
+
 ### Tailoring keeps the CV's own formatting (21 September 2026)
 
 A Word CV is now tailored by editing a copy of the user's own document in
