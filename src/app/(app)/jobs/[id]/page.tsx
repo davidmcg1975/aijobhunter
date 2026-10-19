@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { computeMatch } from "@/lib/matching/service";
+import { sourceDisplayName } from "@/lib/jobsources/registry";
 import { PROMPT_VERSION } from "@/lib/ai/prompts";
 import { Container } from "@/components/ui";
 import { MatchExplanation } from "@/components/match-explanation";
@@ -85,7 +86,7 @@ export default async function JobDetailPage({
           {job.postedAt && (
             <span className="badge">Posted {formatDate(job.postedAt)}</span>
           )}
-          <span className="badge">via {job.source}</span>
+          <span className="badge">via {sourceDisplayName(job.source)}</span>
         </div>
 
         <JobActions
@@ -123,7 +124,7 @@ export default async function JobDetailPage({
         <FullDescriptionPanel
           jobId={job.id}
           jobUrl={job.url}
-          source={job.source}
+          source={sourceDisplayName(job.source)}
           extractLength={job.description.length}
           fullLength={job.fullDescription?.length ?? null}
         />
@@ -213,7 +214,7 @@ export default async function JobDetailPage({
           </h2>
           {isDescriptionIncomplete(job) && (
             <div className="alert alert-warning" style={{ marginBottom: "0.9rem" }}>
-              <strong>This is only an extract.</strong> {job.source} returns
+              <strong>This is only an extract.</strong> {sourceDisplayName(job.source)} returns
               roughly the first 500 characters of an advert through its API, not
               the full text. Requirements, rate and IR35 status may all be
               stated in the part shown below the cut &mdash; open the original
@@ -241,7 +242,7 @@ export default async function JobDetailPage({
               className="btn btn-sm"
               style={{ marginTop: "1rem" }}
             >
-              Open original advert on {job.source}
+              Open original advert on {sourceDisplayName(job.source)}
             </a>
           )}
         </section>
