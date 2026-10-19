@@ -73,7 +73,7 @@ export function JobSearchPanel({
               id="keywords"
               name="keywords"
               className="input"
-              placeholder="Senior Test Analyst"
+              placeholder="Job title or skill"
               defaultValue={defaults.q}
             />
           </div>
@@ -100,7 +100,7 @@ export function JobSearchPanel({
               id="location"
               name="location"
               className="input"
-              placeholder="London"
+              placeholder="Town, city or postcode"
               defaultValue={defaults.location}
             />
           </div>
@@ -132,7 +132,7 @@ export function JobSearchPanel({
               min={0}
               step={25}
               className="input"
-              placeholder="450"
+              placeholder="Day rate in pounds"
               defaultValue={defaults.minRate}
             />
           </div>
