@@ -17,7 +17,9 @@ COPY . .
 # placeholder simply satisfies the config loader.
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx prisma generate && npm run build
+# Belt and braces with public/.gitkeep: a COPY whose source does not exist
+# fails the build, and an empty directory is easily lost in a fresh clone.
+RUN mkdir -p public && npx prisma generate && npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
