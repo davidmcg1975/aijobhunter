@@ -1,4 +1,5 @@
 import "server-only";
+import { ownedJob, sharedOnly } from "@/lib/jobsources/visibility";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { callAi, parseJsonResponse } from "./client";
@@ -40,8 +41,10 @@ function sanitiseRate(value: number | null): number | null {
 }
 
 export async function analyseJob(jobId: string, userId?: string | null) {
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
+  // A user may analyse their own manually added job; background runs, which
+  // pass no userId, see shared listings only.
+  const job = await prisma.job.findFirst({
+    where: userId ? ownedJob(jobId, userId) : { id: jobId, ...sharedOnly },
     include: { analysis: true },
   });
   if (!job) throw new Error("Job not found");

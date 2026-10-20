@@ -228,6 +228,27 @@ should be checked on the first call that gets through.
 Check each one's terms independently. Several explicitly forbid storing or
 re-serving listings, which this application does by design.
 
+## Jobs added by hand
+
+Not every contract is on Adzuna or Careerjet: plenty arrive on LinkedIn, an
+agency's own site, or by email from a recruiter. "Add a job from elsewhere"
+on the Jobs page takes a pasted advert, has the AI read out title, company,
+location, day rate, IR35 and working arrangement, and lets the user correct
+them before saving. From then on it is an ordinary job - analysed, scored,
+tailored, tracked.
+
+Two things differ from a provider listing:
+
+- **It is private to whoever added it** (`Job.addedByUserId`). A provider
+  listing is public; a recruiter's email is not. See "Data isolation" in
+  `CLAUDE.md` for the queries this constrains.
+- **The advert is complete**, so scores are better than a job board's from
+  the start - the first real one scored 76% with all eight dimensions
+  assessed, where a 500-character extract typically leaves five unassessable.
+
+`src/lib/jobsources/manual.ts` holds the pure part and is not registered as a
+`JobSource`: there is nothing to search.
+
 ## Relevance filtering
 
 Providers interpret keywords loosely: asked for "test analyst", Careerjet

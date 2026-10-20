@@ -1,4 +1,5 @@
 import "server-only";
+import { ownedJob } from "@/lib/jobsources/visibility";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AiUnavailableError, callAi, parseJsonResponse } from "./client";
@@ -37,7 +38,7 @@ export async function generateCoverLetter(params: {
   const { userId, jobId, tone } = params;
 
   const [job, context] = await Promise.all([
-    prisma.job.findUnique({ where: { id: jobId } }),
+    prisma.job.findFirst({ where: ownedJob(jobId, userId) }),
     loadUserContext(userId),
   ]);
 
@@ -112,7 +113,7 @@ export async function draftRecruiterMessage(params: {
   channel: RecruiterChannel;
 }): Promise<{ content: string; grounding: GroundingReport }> {
   const [job, context] = await Promise.all([
-    prisma.job.findUnique({ where: { id: params.jobId } }),
+    prisma.job.findFirst({ where: ownedJob(params.jobId, params.userId) }),
     loadUserContext(params.userId),
   ]);
 

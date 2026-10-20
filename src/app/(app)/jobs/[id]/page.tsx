@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
+import { ownedJob } from "@/lib/jobsources/visibility";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { computeMatch } from "@/lib/matching/service";
-import { sourceDisplayName } from "@/lib/jobsources/registry";
+import { jobOriginLabel, sourceDisplayName } from "@/lib/jobsources/registry";
+import { MANUAL_SOURCE } from "@/lib/jobsources/manual";
 import { PROMPT_VERSION } from "@/lib/ai/prompts";
 import { Container } from "@/components/ui";
 import { MatchExplanation } from "@/components/match-explanation";
@@ -30,8 +32,8 @@ export default async function JobDetailPage({
   const user = await requireUser();
   const { id } = await params;
 
-  const job = await prisma.job.findUnique({
-    where: { id },
+  const job = await prisma.job.findFirst({
+    where: ownedJob(id, user.id),
     include: {
       analysis: true,
       duplicates: { select: { id: true, source: true, url: true } },
@@ -86,7 +88,7 @@ export default async function JobDetailPage({
           {job.postedAt && (
             <span className="badge">Posted {formatDate(job.postedAt)}</span>
           )}
-          <span className="badge">via {sourceDisplayName(job.source)}</span>
+          <span className="badge">{jobOriginLabel(job.source)}</span>
         </div>
 
         <JobActions
@@ -121,13 +123,15 @@ export default async function JobDetailPage({
       <div className="stack" style={{ gap: "1.2rem" }}>
         <MatchExplanation breakdown={breakdown} />
 
-        <FullDescriptionPanel
-          jobId={job.id}
-          jobUrl={job.url}
-          source={sourceDisplayName(job.source)}
-          extractLength={job.description.length}
-          fullLength={job.fullDescription?.length ?? null}
-        />
+        {job.source !== MANUAL_SOURCE && (
+          <FullDescriptionPanel
+            jobId={job.id}
+            jobUrl={job.url}
+            source={sourceDisplayName(job.source)}
+            extractLength={job.description.length}
+            fullLength={job.fullDescription?.length ?? null}
+          />
+        )}
 
         {job.analysis && (
           <section className="card" style={{ padding: "1.1rem" }}>
@@ -210,7 +214,9 @@ export default async function JobDetailPage({
 
         <section className="card" style={{ padding: "1.1rem" }}>
           <h2 style={{ margin: "0 0 0.6rem", fontSize: "1.05rem" }}>
-            {job.fullDescription ? "Full advert" : "Original advert"}
+            {job.source === MANUAL_SOURCE || job.fullDescription
+              ? "Full advert"
+              : "Original advert"}
           </h2>
           {isDescriptionIncomplete(job) && (
             <div className="alert alert-warning" style={{ marginBottom: "0.9rem" }}>
@@ -242,7 +248,9 @@ export default async function JobDetailPage({
               className="btn btn-sm"
               style={{ marginTop: "1rem" }}
             >
-              Open original advert on {sourceDisplayName(job.source)}
+              {job.source === MANUAL_SOURCE
+                ? "Open the advert"
+                : `Open original advert on ${sourceDisplayName(job.source)}`}
             </a>
           )}
         </section>

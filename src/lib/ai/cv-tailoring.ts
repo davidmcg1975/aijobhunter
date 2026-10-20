@@ -1,4 +1,5 @@
 import "server-only";
+import { ownedJob } from "@/lib/jobsources/visibility";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { callAi, AiUnavailableError, parseJsonResponse } from "./client";
@@ -66,7 +67,7 @@ export async function tailorCv(params: {
   const { userId, jobId } = params;
 
   const [job, context] = await Promise.all([
-    prisma.job.findUnique({ where: { id: jobId } }),
+    prisma.job.findFirst({ where: ownedJob(jobId, userId) }),
     loadUserContext(userId),
   ]);
 

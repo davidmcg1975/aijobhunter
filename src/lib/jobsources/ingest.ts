@@ -1,4 +1,5 @@
 import "server-only";
+import { sharedOnly } from "./visibility";
 import { prisma } from "@/lib/db";
 import { availableSources, type ResolvedSource } from "./credentials";
 import { fingerprint, findDuplicate } from "./dedupe";
@@ -137,7 +138,7 @@ async function storeJob(job: NormalisedJob): Promise<StoreOutcome> {
   // Cross-posting / cross-source duplicate: keep the record but point it at
   // the one we display, so the original source URL is never lost.
   const candidates = await prisma.job.findMany({
-    where: { fingerprint: fp, canonicalId: null },
+    where: { fingerprint: fp, canonicalId: null, ...sharedOnly },
     select: {
       id: true,
       source: true,

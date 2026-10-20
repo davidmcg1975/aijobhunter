@@ -363,3 +363,39 @@ not "lacks".
 
 Return ONLY a JSON object, with no commentary.
 `.trim();
+
+export const JOB_DETAILS_SYSTEM = `
+You read a UK IT contract job advertisement and return its headline facts.
+
+You extract only what the advert states. If it does not say something, return
+null - never guess. Rates must be DAY rates: if the advert quotes an hourly or
+annual figure, return null rather than converting it.
+
+Return ONLY a JSON object, with no commentary.
+`.trim();
+
+/**
+ * Used when a user pastes an advert they found elsewhere, to fill in the form
+ * they then confirm. Deliberately small: the headline fields only, because
+ * the full analysis runs separately once the job is saved.
+ */
+export function jobDetailsPrompt(advert: string): string {
+  return `
+Read this job advertisement and return its headline facts.
+
+"""
+${advert.slice(0, 20_000)}
+"""
+
+Return JSON with exactly this shape:
+{
+  "title": "the job title as advertised, or null",
+  "company": "the hiring company or agency, or null",
+  "location": "the work location as stated, or null",
+  "dayRateMin": the lowest day rate as a number, or null,
+  "dayRateMax": the highest day rate as a number, or null,
+  "ir35": "INSIDE, OUTSIDE or null",
+  "remote": "REMOTE, HYBRID, ONSITE or null"
+}
+`.trim();
+}

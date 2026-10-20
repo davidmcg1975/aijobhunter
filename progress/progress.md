@@ -71,6 +71,21 @@ rather than reading the environment. Design and trade-offs in
 `docs/security.md`. Unit tested (encryption, validation, every provider's
 key shape); schema applied to Neon.
 
+### Adding a job found elsewhere (20 October 2026)
+
+Contracts arrive on LinkedIn, agency sites and by email, none of which this
+application can search. A pasted advert now becomes a job: the AI reads its
+headline fields, the user corrects them, and it is analysed, scored and
+tailored like any other. Such jobs are private to whoever added them
+(`Job.addedByUserId`), which constrains every query that reaches a job -
+verified against the real database, owner sees it, other account does not,
+background sweeps skip it.
+
+Verified end to end with a realistic advert: fields read correctly (company
+left blank, because the advert never named the bank), saved, and **scored 76%
+with all eight dimensions assessed** - a job board extract typically leaves
+five of them unassessable. Cost: under a penny.
+
 ### "Why is everything 60%?" (19 October 2026)
 
 The first user of a fresh copy saw receptionist, labourer and customer

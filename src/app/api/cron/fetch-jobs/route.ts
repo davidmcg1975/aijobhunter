@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sharedOnly } from "@/lib/jobsources/visibility";
 import { timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
   let analysed = 0;
   if (process.env.ANTHROPIC_API_KEY) {
     const pending = await prisma.job.findMany({
-      where: { analysis: null, canonicalId: null },
+      where: { analysis: null, canonicalId: null, ...sharedOnly },
       orderBy: { retrievedAt: "desc" },
       take: 25,
       select: { id: true },
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
     select: { id: true },
   });
   const recent = await prisma.job.findMany({
-    where: { canonicalId: null },
+    where: { canonicalId: null, ...sharedOnly },
     orderBy: { retrievedAt: "desc" },
     take: 100,
     select: { id: true },

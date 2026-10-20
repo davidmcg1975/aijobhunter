@@ -1,4 +1,5 @@
 import "server-only";
+import { ownedJob } from "@/lib/jobsources/visibility";
 import { isUnderEvidenced } from "./evidence";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -66,8 +67,8 @@ export async function computeMatch(params: {
     return existing.breakdown as unknown as MatchBreakdown;
   }
 
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
+  const job = await prisma.job.findFirst({
+    where: ownedJob(jobId, userId),
     include: { analysis: true },
   });
   if (!job) throw new Error("Job not found");

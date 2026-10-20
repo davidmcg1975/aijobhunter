@@ -103,6 +103,13 @@ applications, analyses or documents.
   refuses to read a key outside the caller's own prefix.
 - `Job` and `JobAnalysis` are shared reference data and deliberately have no
   `userId`. `JobMatch` is per-user and does.
+- **`Job.addedByUserId` is the exception.** A job a user added by hand may
+  have come from a recruiter's email or a private portal, so it is theirs
+  alone. Every query reaching a job on a user's behalf spreads
+  `visibleToUser(userId)` or `ownedJob(id, userId)` from
+  `src/lib/jobsources/visibility.ts` into its `where`; background work and
+  deduplication use `sharedOnly`, so a shared listing can never be pointed at
+  someone's private copy.
 - Admins get counts and operational health only. There is no route that returns
   another user's CV text, profile or applications, and there must not be.
 
@@ -209,6 +216,15 @@ All external job providers implement the `JobSource` interface in
   user has pasted over the provider's 500-character extract. Reading the raw
   column silently works from a fragment and quietly degrades every score and
   document built from it.
+
+**Manually added jobs** (`src/lib/jobsources/manual.ts`) are deliberately not
+a `JobSource` and not in the registry: there is nothing to search. A user
+pastes an advert found elsewhere, the AI reads its headline fields, and they
+confirm them before it is saved - the fields drive the score and every
+document built from it, so they are never saved unreviewed. The parsers fill
+anything the AI leaves blank, so it works with no AI key at all. The pasted
+text is the whole advert, so `descriptionTruncated` is false and the
+paste-the-full-advert panel is hidden.
 
 See `docs/adzuna.md` for the licensing position, which is a real constraint, not
 a formality.

@@ -308,6 +308,12 @@ model Job {
   retrievedAt DateTime  @default(now())
   expiredAt   DateTime?
 
+  /// Set when a user added this job by hand from an advert they found
+  /// elsewhere. Such a job is visible only to them: unlike a job board
+  /// listing it may have come from a recruiter's email or a private portal.
+  /// Null means shared reference data, as everything from a provider is.
+  addedByUserId String?
+
   /// Normalised hash of title + company + location, used for cross-source dedup.
   fingerprint String
 
@@ -324,6 +330,7 @@ model Job {
   tailoredCvs  Cv[]
 
   @@unique([source, sourceJobId])
+  @@index([addedByUserId])
   @@index([fingerprint])
   @@index([postedAt])
   @@index([canonicalId])

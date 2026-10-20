@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ownedJob, visibleToUser } from "@/lib/jobsources/visibility";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
@@ -89,7 +90,7 @@ export async function fetchJobsAction(
 
   // Score everything that came back so the list is useful immediately.
   const recent = await prisma.job.findMany({
-    where: { canonicalId: null },
+    where: { canonicalId: null, ...visibleToUser(user.id) },
     orderBy: { retrievedAt: "desc" },
     take: 60,
     select: { id: true },
@@ -192,7 +193,7 @@ export async function rescoreAllAction(): Promise<ActionResult> {
   const user = await requireUser();
 
   const jobs = await prisma.job.findMany({
-    where: { canonicalId: null },
+    where: { canonicalId: null, ...visibleToUser(user.id) },
     select: { id: true },
     take: 300,
     orderBy: { retrievedAt: "desc" },
@@ -222,8 +223,8 @@ export async function saveFullDescriptionAction(
   const pasted = String(formData.get("fullDescription") ?? "");
   if (!jobId) return { error: "No job specified." };
 
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
+  const job = await prisma.job.findFirst({
+    where: ownedJob(jobId, user.id),
     select: { id: true, description: true, fullDescription: true },
   });
   if (!job) return { error: "That job could not be found." };

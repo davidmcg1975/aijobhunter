@@ -5,7 +5,7 @@ import { getDashboardStats, getTopMatches } from "@/lib/matching/service";
 import { loadUserContext } from "@/lib/ai/profile-context";
 import { Container, EmptyState, Grid, PageHeader, Stat } from "@/components/ui";
 import { JobCard } from "@/components/job-card";
-import { sourceDisplayName } from "@/lib/jobsources/registry";
+import { jobOriginLabel } from "@/lib/jobsources/registry";
 import { formatRelative } from "@/lib/format";
 import type { MatchBreakdown } from "@/lib/matching/types";
 
@@ -138,7 +138,7 @@ export default async function DashboardPage() {
                 key={match.id}
                 job={match.job}
                 breakdown={match.breakdown as unknown as MatchBreakdown}
-                sourceName={sourceDisplayName(match.job.source)}
+                sourceName={jobOriginLabel(match.job.source)}
               />
             ))}
           </div>

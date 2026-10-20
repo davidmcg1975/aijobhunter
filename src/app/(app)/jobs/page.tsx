@@ -1,13 +1,15 @@
 import { requireUser } from "@/lib/auth/session";
+import { visibleToUser } from "@/lib/jobsources/visibility";
 import { prisma } from "@/lib/db";
 import { Container, EmptyState, PageHeader } from "@/components/ui";
 import { JobCard } from "@/components/job-card";
 import { JobSearchPanel } from "@/components/job-search-panel";
+import { AddJobPanel } from "@/components/add-job-panel";
 import { sourceStatusFor } from "@/lib/jobsources/credentials";
 import { keywordTerms, matchesKeywords, type KeywordMode } from "@/lib/jobsources/relevance";
 import { matchRank } from "@/lib/matching/evidence";
 import { effectiveDescription } from "@/lib/jobsources/description";
-import { sourceDisplayName } from "@/lib/jobsources/registry";
+import { jobOriginLabel } from "@/lib/jobsources/registry";
 import Link from "next/link";
 import type { MatchBreakdown } from "@/lib/matching/types";
 import type { Prisma } from "@prisma/client";
@@ -40,6 +42,7 @@ export default async function JobsPage({
   const where: Prisma.JobWhereInput = {
     canonicalId: null,
     expiredAt: null,
+    ...visibleToUser(user.id),
   };
   // Every condition must hold. Collected here rather than assigned to
   // where.OR, which previously let a rate filter overwrite the keyword filter
@@ -141,7 +144,7 @@ export default async function JobsPage({
     <Container>
       <PageHeader
         title="Jobs"
-        description="Search live contract adverts, then filter the results stored here."
+        description="Search live contract adverts, or add one you found elsewhere."
       />
 
       <JobSearchPanel
@@ -149,6 +152,8 @@ export default async function JobsPage({
         sourcesConfigured={configured.length > 0}
         sourceNames={configured.map((s) => s.displayName)}
       />
+
+      <AddJobPanel />
 
       <div
         style={{
@@ -189,7 +194,7 @@ export default async function JobsPage({
               key={job.id}
               job={job}
               breakdown={breakdown}
-              sourceName={sourceDisplayName(job.source)}
+              sourceName={jobOriginLabel(job.source)}
             />
           ))}
         </div>

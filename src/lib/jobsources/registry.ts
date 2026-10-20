@@ -3,6 +3,7 @@ import { AdzunaSource } from "./adzuna";
 import { ReedSource } from "./reed";
 import { CareerjetSource } from "./careerjet";
 import type { JobSource } from "./types";
+import { MANUAL_SOURCE } from "./manual";
 
 /**
  * The single place that knows which providers exist.
@@ -31,6 +32,15 @@ export function getSource(id: string): JobSource | undefined {
  */
 export function sourceDisplayName(id: string): string {
   return getSource(id)?.displayName ?? id;
+}
+
+/**
+ * How a job's origin reads on screen. A job the user pasted in themselves is
+ * not "via" anything - saying "via manual" states the implementation, not
+ * the fact.
+ */
+export function jobOriginLabel(source: string): string {
+  return source === MANUAL_SOURCE ? "added by you" : `via ${sourceDisplayName(source)}`;
 }
 
 /**

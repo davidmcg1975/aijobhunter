@@ -29,6 +29,7 @@ export type AuditAction =
   | "profile.updated"
   | "job.analysed"
   | "job.description_added"
+  | "job.added_manually"
   | "job.matched"
   | "application.created"
   | "application.status_changed"

@@ -31,7 +31,7 @@ export function JobCard({
 }: {
   job: JobSummary;
   breakdown?: MatchBreakdown | null;
-  /** Which job board the advert came from, e.g. "Careerjet". */
+  /** Where the advert came from, e.g. "via Careerjet" or "added by you". */
   sourceName?: string;
 }) {
   const strengths = breakdown?.strengths.slice(0, 4) ?? [];
@@ -58,7 +58,7 @@ export function JobCard({
             <div className="muted" style={{ fontSize: "0.88rem" }}>
               {job.company}
               {job.company && sourceName && " · "}
-              {sourceName && <span className="subtle">via {sourceName}</span>}
+              {sourceName && <span className="subtle">{sourceName}</span>}
             </div>
           )}
         </div>
