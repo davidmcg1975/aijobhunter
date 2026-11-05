@@ -277,6 +277,10 @@ a green test suite said nothing about whether a single AI call would succeed.
   placeholder `DATABASE_URL` the Dockerfile uses, and the resulting standalone
   server answering `/login` and `/register` (21 September 2026).
 
+The optional host update helper lets admins check GitHub and install updates
+from the app for local Docker, Node.js development with PGlite and Node.js
+production with PostgreSQL. See `docs/local-updates.md` for setup.
+
 ## Next steps
 
 The application already runs:

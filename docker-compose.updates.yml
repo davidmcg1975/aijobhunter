@@ -1,0 +1,11 @@
+# Optional companion for docker-compose.local.yml.
+services:
+  app:
+    environment:
+      UPDATE_MAILBOX: /run/contract-hunter-updates
+    volumes:
+      - type: bind
+        source: ${UPDATE_MAILBOX:?Set UPDATE_MAILBOX to the host mailbox directory}
+        target: /run/contract-hunter-updates
+        bind:
+          create_host_path: false

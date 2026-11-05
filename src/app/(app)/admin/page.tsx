@@ -6,6 +6,8 @@ import { Container, Grid, PageHeader, Stat } from "@/components/ui";
 import { AdminUserList } from "@/components/admin-panels";
 import { sourceStatus } from "@/lib/jobsources/registry";
 import { formatDate } from "@/lib/format";
+import { readUpdateStatus } from "@/lib/updates";
+import { UpdateControls } from "@/components/update-controls";
 
 export const metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
@@ -76,6 +78,16 @@ export default async function AdminPage() {
   ]);
 
   const spendPence = aiSpend._sum.costPence ?? 0;
+  const updates = await readUpdateStatus();
+  const updateMessages = {
+    idle: "Ready to check GitHub.",
+    checking: "Checking GitHub for updates.",
+    current: "This checkout is up to date.",
+    available: "An update is available. Installing may briefly take the app offline.",
+    installing: "Installing the update.",
+    installed: "The installation command completed.",
+    error: "The update operation failed. See the host helper log.",
+  };
 
   return (
     <Container>
@@ -95,6 +107,18 @@ export default async function AdminPage() {
           value={`£${(spendPence / 100).toFixed(2)}`}
         />
       </Grid>
+
+      <section className="card stack" style={{ marginTop: "2rem", padding: "1rem" }}>
+        <h2>Updates</h2>
+        <p>{updates ? updateMessages[updates.phase] : "The optional host update helper is offline or has not been set up."}</p>
+        {updates && (
+          <UpdateControls
+            automatic={updates.automatic}
+            revision={updates.phase === "available" ? updates.revision : undefined}
+            busy={updates.phase === "installing" || updates.phase === "checking"}
+          />
+        )}
+      </section>
 
       <section style={{ marginTop: "2rem" }}>
         <h2 style={{ fontSize: "1.05rem", marginBottom: "0.7rem" }}>Job sources</h2>
