@@ -137,6 +137,15 @@ docker compose -f docker-compose.local.yml up -d --build
 
 Updating re-runs the schema step automatically before the new version starts.
 
+On Windows with Docker Desktop running, use PowerShell from the repository
+folder to check GitHub and install updates. Run `./scripts/update-local.ps1
+-CheckOnly` to check, or `./scripts/update-local.ps1` to review the incoming
+commits and confirm the install. The updater requires a clean checkout on
+`main`, advances it to `origin/main` and rebuilds the local Docker services.
+The existing database and uploads volumes are reused. If the Docker step
+fails after Git updates, fix the reported error and rerun the build command
+above.
+
 To save typing, you can set the file once per terminal session instead —
 `export COMPOSE_FILE=docker-compose.local.yml` (PowerShell:
 `$env:COMPOSE_FILE="docker-compose.local.yml"`) — then plain `docker compose up -d`

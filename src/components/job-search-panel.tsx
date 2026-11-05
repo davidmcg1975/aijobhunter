@@ -40,6 +40,7 @@ export function JobSearchPanel({
     // samples from a software tester, but the score against the CV can.
     const params = new URLSearchParams({ q: state.searched.keywords, sort: "match" });
     if (state.searched.mode !== "all") params.set("mode", state.searched.mode);
+    if (state.searched.days) params.set("days", String(state.searched.days));
     router.replace(`/jobs?${params}`);
   }, [state.searched, router]);
 
@@ -144,7 +145,7 @@ export function JobSearchPanel({
               id="postedWithinDays"
               name="postedWithinDays"
               className="select"
-              defaultValue="7"
+              defaultValue="1"
             >
               <option value="1">Last 24 hours</option>
               <option value="3">Last 3 days</option>

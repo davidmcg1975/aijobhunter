@@ -9,6 +9,7 @@ import { sourceStatusFor } from "@/lib/jobsources/credentials";
 import { keywordTerms, matchesKeywords, type KeywordMode } from "@/lib/jobsources/relevance";
 import { matchRank } from "@/lib/matching/evidence";
 import { effectiveDescription } from "@/lib/jobsources/description";
+import { jobDateFilter } from "@/lib/jobsources/date-filter";
 import { jobOriginLabel } from "@/lib/jobsources/registry";
 import Link from "next/link";
 import type { MatchBreakdown } from "@/lib/matching/types";
@@ -47,7 +48,7 @@ export default async function JobsPage({
   // Every condition must hold. Collected here rather than assigned to
   // where.OR, which previously let a rate filter overwrite the keyword filter
   // and turn "keyword AND rate" into "keyword OR rate".
-  const and: Prisma.JobWhereInput[] = [];
+  const and: Prisma.JobWhereInput[] = [jobDateFilter(params.days)];
 
   const keywordMode: KeywordMode =
     params.mode === "any" || params.mode === "phrase" ? params.mode : "all";
@@ -81,14 +82,7 @@ export default async function JobsPage({
   if (params.remote && params.remote !== "ANY") {
     where.remote = params.remote as "REMOTE" | "HYBRID" | "ONSITE";
   }
-  if (params.days) {
-    const days = Number(params.days);
-    if (Number.isFinite(days)) {
-      where.postedAt = { gte: new Date(Date.now() - days * 86_400_000) };
-    }
-  }
-
-  if (and.length > 0) where.AND = and;
+  where.AND = and;
 
   const minScore = params.minScore ? Number(params.minScore) : null;
   if (minScore !== null && Number.isFinite(minScore)) {
@@ -169,16 +163,17 @@ export default async function JobsPage({
           {rows.length} {rows.length === 1 ? "job" : "jobs"}
           {params.q ? ` matching "${params.q}"` : ""}
         </h2>
-        {params.q && (
-          <Link href="/jobs" className="hint">
-            Show all stored jobs
-          </Link>
-        )}
+        <Link
+          href={{ pathname: "/jobs", query: { ...params, days: params.days === "all" ? "1" : "all" } }}
+          className="hint"
+        >
+          {params.days === "all" ? "Show last 24 hours" : "Show all dates"}
+        </Link>
       </div>
 
       {rows.length === 0 ? (
         <EmptyState
-          title={params.q ? "No stored jobs match that" : "No jobs stored yet"}
+          title={params.q ? "No stored jobs match that" : "No jobs in this date range"}
           description={
             configured.length === 0
               ? "No job source is set up yet. Add an Adzuna key under Settings → API keys to start searching."

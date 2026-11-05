@@ -25,7 +25,7 @@ export type ActionResult = {
   error?: string;
   success?: string;
   /** After a live search: what was searched, so the list can show just that. */
-  searched?: { keywords: string; mode: "all" | "any" | "phrase" };
+  searched?: { keywords: string; mode: "all" | "any" | "phrase"; days?: number };
 };
 
 const searchSchema = z.object({
@@ -101,9 +101,11 @@ export async function fetchJobsAction(
 
   return {
     success: outcome.message,
-    searched: parsed.data.keywords
-      ? { keywords: parsed.data.keywords, mode: parsed.data.keywordMode ?? "all" }
-      : undefined,
+    searched: {
+      keywords: parsed.data.keywords ?? "",
+      mode: parsed.data.keywordMode ?? "all",
+      days: parsed.data.postedWithinDays,
+    },
   };
 }
 
