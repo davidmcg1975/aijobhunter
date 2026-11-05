@@ -138,7 +138,7 @@ docker compose -f docker-compose.local.yml up -d --build
 Updating re-runs the schema step automatically before the new version starts.
 
 To check and install updates from the browser, set up the optional
-[Admin update helper](local-updates.md).
+[Docker walkthrough for the Admin update helper](local-updates.md#local-docker-on-windows).
 
 On Windows with Docker Desktop running, use PowerShell from the repository
 folder to check GitHub and install updates. Run `./scripts/update-local.ps1

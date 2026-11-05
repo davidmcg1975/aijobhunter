@@ -11,7 +11,46 @@ Install the helper in an existing checkout of this repository on `main`
 with `origin` set to its GitHub HTTPS URL. The checkout must be clean to
 install. The helper only accepts a fast-forward update from that remote.
 
-## Host setup
+## Local Docker on Windows
+
+Start Docker Desktop and make sure Node.js 22 or later is installed on
+Windows. Open two PowerShell windows in the app's repository folder.
+
+### 1. Start the helper in the first window
+
+```powershell
+git pull --ff-only
+if ($LASTEXITCODE -ne 0) { throw "Git pull failed. Resolve the error before continuing." }
+$env:UPDATE_MODE = 'docker'
+$env:UPDATE_MAILBOX = Join-Path $env:LOCALAPPDATA 'AIContractHunter\updates'
+node .\scripts\update-host.mjs
+```
+
+Wait for **Update helper ready in docker mode** and leave this window open.
+It shows the installation log. After restarting Windows, run the last three
+lines again to bring the helper back online.
+
+### 2. Connect Docker in the second window
+
+```powershell
+$env:UPDATE_MAILBOX = Join-Path $env:LOCALAPPDATA 'AIContractHunter\updates'
+docker compose -f docker-compose.local.yml -f docker-compose.updates.yml up -d --build
+```
+
+This is a one-time setup. Docker reuses the existing database and CV uploads.
+Use both Compose files if you later run Compose commands manually.
+
+### 3. Check for updates in the app
+
+1. Open [the app](http://localhost:3000) and sign in as an admin.
+2. Go to **Admin → Updates** and click **Check for updates**.
+3. Click **Refresh status** after a few seconds. If an update is available,
+   click **Install update** when you're ready for the app to restart.
+
+To turn off the helper, press **Ctrl+C** in the first window once any
+installation has finished. The app can still run with the helper stopped.
+
+## Docker on macOS or Linux
 
 Use Node.js 22 or later on the host and set `UPDATE_MAILBOX` to an absolute
 path to a dedicated directory outside the checkout. Give the app and the
@@ -20,28 +59,23 @@ out of it. Anything that can write to the mailbox can request an installation.
 Run the helper under the account that normally updates and operates the app.
 Its terminal output is the installation log.
 
-Set `UPDATE_MODE` as shown below. Start the helper with
-`node scripts/update-host.mjs` from the checkout, in a separate terminal
-or as a host service. Keep it running across app restarts. Restart the
-helper after an app update to load any changes to the helper itself.
-
-## Local Docker
-
-Set `UPDATE_MODE=docker`. Start the helper to create the mailbox directory.
-Then, from a terminal with the same host `UPDATE_MAILBOX` set, enable the
-optional Compose file:
+From the repository folder, run `git pull --ff-only`, then start the helper
+with `UPDATE_MODE=docker node scripts/update-host.mjs`. Leave it running.
+In a second terminal in the same folder, export the same `UPDATE_MAILBOX`
+and run:
 
 ```sh
 docker compose -f docker-compose.local.yml -f docker-compose.updates.yml up -d --build
 ```
 
 The app container needs write access to the mailbox as UID 1001 on Linux.
-Use a shared group or an ACL for that UID and the host helper account. Use the
-same Compose files for subsequent manual operations. The helper runs Compose
-with these files and waits for the services to start. The database and upload
-volumes are reused.
+Use a shared group or an ACL for that UID and the host helper account. Then
+follow step 3 above.
 
 ## Node.js
+
+Use Node.js 22 or later. Choose a dedicated mailbox directory outside the
+checkout that only the helper and app can access.
 
 Set `UPDATE_MAILBOX` in both the app's and helper's environments. Set
 `UPDATE_STOP` and `UPDATE_START` in the helper's environment to absolute
@@ -50,6 +84,8 @@ to the process manager you use. The stop script must return success only after
 the app process and its children have exited cleanly. The start script should
 ask your process manager to start the app and return success once it is
 running. Both scripts receive the checkout as their working directory.
+Run `node scripts/update-host.mjs` in a separate terminal or as a host
+service and keep it running across app restarts.
 
 - **Development with PGlite** uses `UPDATE_MODE=dev-pglite`. Manage
   `npm run dev` with the hooks. The helper stops it before installing
