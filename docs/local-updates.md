@@ -50,7 +50,44 @@ Use both Compose files if you later run Compose commands manually.
 To turn off the helper, press **Ctrl+C** in the first window once any
 installation has finished. The app can still run with the helper stopped.
 
-## Docker on macOS or Linux
+## Local Docker on macOS
+
+Start Docker Desktop and make sure Node.js 22 or later is installed on
+your Mac. Open two Terminal tabs in the app's repository folder.
+
+### 1. Start the helper in the first tab
+
+```sh
+export UPDATE_MODE=docker
+export UPDATE_MAILBOX="$HOME/Library/Application Support/AIContractHunter/updates"
+git pull --ff-only && node scripts/update-host.mjs
+```
+
+Wait for **Update helper ready in docker mode** and leave this tab open.
+It shows the installation log. Run these commands again after restarting
+your Mac to bring the helper back online.
+
+### 2. Connect Docker in the second tab
+
+```sh
+export UPDATE_MAILBOX="$HOME/Library/Application Support/AIContractHunter/updates"
+docker compose -f docker-compose.local.yml -f docker-compose.updates.yml up -d --build
+```
+
+This is a one-time setup. Docker reuses the existing database and CV uploads.
+Use both Compose files if you later run Compose commands manually.
+
+### 3. Check for updates in the app
+
+1. Open [the app](http://localhost:3000) and sign in as an admin.
+2. Go to **Admin → Updates** and click **Check for updates**.
+3. Click **Refresh status** after a few seconds. If an update is available,
+   click **Install update** when you're ready for the app to restart.
+
+To turn off the helper, press **Control+C** in the first tab after any
+installation has finished. The app can still run with the helper stopped.
+
+## Local Docker on Linux
 
 Use Node.js 22 or later on the host and set `UPDATE_MAILBOX` to an absolute
 path to a dedicated directory outside the checkout. Give the app and the
@@ -70,7 +107,7 @@ docker compose -f docker-compose.local.yml -f docker-compose.updates.yml up -d -
 
 The app container needs write access to the mailbox as UID 1001 on Linux.
 Use a shared group or an ACL for that UID and the host helper account. Then
-follow step 3 above.
+follow the macOS instructions for checking for updates in the app.
 
 ## Node.js
 
